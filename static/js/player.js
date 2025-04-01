@@ -115,16 +115,23 @@ document.addEventListener('DOMContentLoaded', function() {
         // Update the UI
         updateSongDisplay();
         
-        // Play the song
-        audioPlayer.play()
-            .then(() => {
-                isPlaying = true;
-                updatePlayButtonIcon();
-            })
-            .catch(error => {
-                console.error('Error playing song:', error);
-                songTitle.textContent = 'Error playing song';
-            });
+        // Play the song - using timeout to avoid potential race conditions
+        setTimeout(() => {
+            if (audioPlayer.paused) {
+                audioPlayer.play()
+                    .then(() => {
+                        isPlaying = true;
+                        updatePlayButtonIcon();
+                    })
+                    .catch(error => {
+                        // Only log error if it's not an AbortError
+                        if (error.name !== 'AbortError') {
+                            console.error('Error playing song:', error);
+                            songTitle.textContent = 'Error playing song';
+                        }
+                    });
+            }
+        }, 50);
         
         // Update the active song in the list
         updateActiveSong();
@@ -190,10 +197,15 @@ document.addEventListener('DOMContentLoaded', function() {
                 return;
             }
             audioPlayer.play()
+                .then(() => {
+                    isPlaying = true;
+                })
                 .catch(error => {
-                    console.error('Error playing song:', error);
+                    // Only log error if it's not an AbortError
+                    if (error.name !== 'AbortError') {
+                        console.error('Error playing song:', error);
+                    }
                 });
-            isPlaying = true;
         }
         
         updatePlayButtonIcon();
