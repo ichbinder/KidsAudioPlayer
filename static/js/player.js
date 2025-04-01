@@ -320,7 +320,7 @@ document.addEventListener('DOMContentLoaded', function() {
             sleepTimerId = null;
             sleepTimerEndTime = null;
             sleepTimerButton.classList.remove('timer-active');
-            sleepTimerText.textContent = 'Schlaf-Timer';
+            sleepTimerButton.setAttribute('title', 'Schlaf-Timer');
             
             // Remove active class from all timer options
             timerOptions.forEach(option => {
@@ -331,11 +331,11 @@ document.addEventListener('DOMContentLoaded', function() {
     
     function updateSleepTimerDisplay(minutes) {
         if (minutes <= 0) {
-            sleepTimerText.textContent = 'Schlaf-Timer';
+            sleepTimerButton.setAttribute('title', 'Schlaf-Timer');
             return;
         }
         
-        sleepTimerText.textContent = `${minutes} Min`;
+        sleepTimerButton.setAttribute('title', `${minutes} Min`);
     }
     
     // Sleep Timer button click handler
