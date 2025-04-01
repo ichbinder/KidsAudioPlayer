@@ -22,6 +22,7 @@ A kid-friendly MP3 player with RFID functionality, specifically designed for Ras
 - MIFARE Classic 1K RFID cards/tags
 - Speakers or headphones
 - Power supply for the Raspberry Pi
+- Recommended: Pibow Frame for Raspberry Pi Touch Display 2 for an integrated case solution
 
 ## Software Requirements
 
@@ -118,6 +119,8 @@ kids-rfid-music-player/
 4. If an entry is found, the linked song is played
 5. When the card is removed, playback stops
 
+The Pibow Frame for Raspberry Pi Touch Display 2 provides an elegant housing solution, making the whole setup more durable and child-friendly, with easy access to the touch screen interface.
+
 In simulation mode (when no RFID reader is connected), a virtual RFID tag with ID "12345678" is simulated.
 
 ## Troubleshooting
@@ -159,3 +162,4 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 - RFID library: [mfrc522](https://github.com/pimylifeup/MFRC522-python)
 - SVG icons: [Feather Icons](https://feathericons.com/)
 - Demo MP3s: [Pixabay](https://pixabay.com/music/)
+- Pibow Frame for Raspberry Pi Touch Display 2: [Pimoroni](https://shop.pimoroni.com/)
