@@ -55,8 +55,33 @@ document.addEventListener('DOMContentLoaded', function() {
         songs.forEach((song, index) => {
             const songItem = document.createElement('div');
             songItem.classList.add('song-item');
-            songItem.textContent = song.title;
             songItem.setAttribute('data-index', index);
+            
+            // Create cover image container
+            const coverContainer = document.createElement('div');
+            coverContainer.classList.add('song-item-cover');
+            
+            // Add cover image if available, otherwise show music note
+            if (song.cover_image) {
+                const coverImg = document.createElement('img');
+                coverImg.src = `/api/cover/${encodeURIComponent(song.cover_image)}`;
+                coverImg.alt = song.title;
+                coverContainer.appendChild(coverImg);
+            } else {
+                const defaultCover = document.createElement('div');
+                defaultCover.classList.add('default-cover');
+                defaultCover.textContent = '♪';
+                coverContainer.appendChild(defaultCover);
+            }
+            
+            // Create title element
+            const titleElement = document.createElement('div');
+            titleElement.classList.add('song-item-title');
+            titleElement.textContent = song.title;
+            
+            // Add elements to song item
+            songItem.appendChild(coverContainer);
+            songItem.appendChild(titleElement);
             
             songItem.addEventListener('click', () => {
                 playSong(index);
