@@ -189,6 +189,108 @@ main {
     transition: width 0.1s linear;
 }
 
+/* Volume Control */
+.volume-container {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
+    max-width: 300px;
+    padding: 5px 0;
+    margin: 10px auto;
+}
+
+.volume-icon {
+    font-size: 1.5rem;
+    cursor: pointer;
+    transition: transform 0.2s, color 0.2s;
+    margin: 0 10px;
+}
+
+.volume-icon:hover {
+    transform: scale(1.2);
+    color: var(--accent-color);
+}
+
+.volume-slider-container {
+    position: relative;
+    width: 60%;
+    height: 30px;
+    display: flex;
+    align-items: center;
+}
+
+.volume-slider {
+    -webkit-appearance: none;
+    width: 100%;
+    height: 30px;
+    background-color: transparent;
+    position: relative;
+    z-index: 2;
+    cursor: pointer;
+}
+
+.volume-slider::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    width: 30px;
+    height: 30px;
+    background-color: var(--primary-color);
+    border-radius: 50%;
+    cursor: pointer;
+    border: 2px solid white;
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+    transition: transform 0.1s;
+}
+
+.volume-slider::-moz-range-thumb {
+    width: 30px;
+    height: 30px;
+    background-color: var(--primary-color);
+    border-radius: 50%;
+    cursor: pointer;
+    border: 2px solid white;
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+    transition: transform 0.1s;
+}
+
+.volume-slider:active::-webkit-slider-thumb {
+    transform: scale(1.2);
+}
+
+.volume-slider:active::-moz-range-thumb {
+    transform: scale(1.2);
+}
+
+.volume-slider-track {
+    position: absolute;
+    left: 0;
+    right: 0;
+    top: 50%;
+    height: 12px;
+    background-color: var(--background-color);
+    transform: translateY(-50%);
+    border-radius: 6px;
+    z-index: 1;
+    box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.2);
+}
+
+.volume-slider-fill {
+    position: absolute;
+    left: 0;
+    top: 0;
+    height: 100%;
+    width: 70%; /* Default value */
+    background: linear-gradient(to right, 
+        #ff6b6b, 
+        #ff9e40, 
+        #fffa65, 
+        #8eff65, 
+        #65cbff);
+    border-radius: 6px;
+    z-index: 1;
+    transition: width 0.1s;
+}
+
 /* Sleep Timer */
 .sleep-timer-container {
     display: flex;

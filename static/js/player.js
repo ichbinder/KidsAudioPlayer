@@ -42,6 +42,7 @@ document.addEventListener('DOMContentLoaded', function() {
     let isPlaying = false;
     let sleepTimerId = null;
     let sleepTimerEndTime = null;
+    let currentVolume = 0.7; // Default volume (0.0 to 1.0)
 
     // Fetch songs from the server
     async function loadSongs() {
@@ -434,6 +435,92 @@ document.addEventListener('DOMContentLoaded', function() {
     
     // Initialize theme
     initTheme();
+    
+    // Volume Control Functions
+    function initVolumeControl() {
+        // Get volume control elements
+        const volumeSlider = document.getElementById('volume-slider');
+        const volumeSliderFill = document.getElementById('volume-slider-fill');
+        const volumeIcon = document.getElementById('volume-icon');
+        
+        if (volumeSlider && volumeSliderFill) {
+            // Set initial volume
+            audioPlayer.volume = currentVolume;
+            volumeSlider.value = currentVolume * 100;
+            volumeSliderFill.style.width = `${currentVolume * 100}%`;
+            
+            // Add event listeners for volume control
+            volumeSlider.addEventListener('input', function() {
+                const value = this.value;
+                
+                // Update volume
+                currentVolume = value / 100;
+                audioPlayer.volume = currentVolume;
+                
+                // Update fill
+                volumeSliderFill.style.width = `${value}%`;
+                
+                // Update volume icon based on level
+                updateVolumeIcon(currentVolume);
+                
+                // Save volume preference
+                localStorage.setItem('volume', currentVolume);
+            });
+            
+            // Volume icon click to mute/unmute
+            volumeIcon.addEventListener('click', function() {
+                if (audioPlayer.volume > 0) {
+                    // Store the current volume before muting
+                    localStorage.setItem('previousVolume', audioPlayer.volume);
+                    
+                    // Mute
+                    audioPlayer.volume = 0;
+                    volumeSlider.value = 0;
+                    volumeSliderFill.style.width = '0%';
+                    updateVolumeIcon(0);
+                } else {
+                    // Unmute to previous volume or default
+                    const previousVolume = parseFloat(localStorage.getItem('previousVolume')) || 0.7;
+                    audioPlayer.volume = previousVolume;
+                    volumeSlider.value = previousVolume * 100;
+                    volumeSliderFill.style.width = `${previousVolume * 100}%`;
+                    updateVolumeIcon(previousVolume);
+                }
+                
+                // Save current volume
+                currentVolume = audioPlayer.volume;
+                localStorage.setItem('volume', currentVolume);
+            });
+            
+            // Load saved volume preference
+            const savedVolume = localStorage.getItem('volume');
+            if (savedVolume !== null) {
+                currentVolume = parseFloat(savedVolume);
+                audioPlayer.volume = currentVolume;
+                volumeSlider.value = currentVolume * 100;
+                volumeSliderFill.style.width = `${currentVolume * 100}%`;
+                updateVolumeIcon(currentVolume);
+            }
+        }
+    }
+    
+    function updateVolumeIcon(volume) {
+        const volumeIcon = document.getElementById('volume-icon');
+        if (volumeIcon) {
+            if (volume <= 0) {
+                volumeIcon.textContent = '🔇';
+            } else if (volume < 0.3) {
+                volumeIcon.textContent = '🔈';
+            } else if (volume < 0.7) {
+                volumeIcon.textContent = '🔉';
+            } else {
+                volumeIcon.textContent = '🔊';
+            }
+        }
+    }
+    
+    // Initialize volume control
+    initVolumeControl();
     
     // Load songs on page load
     loadSongs();
