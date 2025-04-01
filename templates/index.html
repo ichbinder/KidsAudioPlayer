@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Kid's Music Player</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/styles.css') }}">
+    <!-- Comic Sans MS is preferred, but using a fallback web-safe font stack -->
+    <link href="https://fonts.googleapis.com/css2?family=Comic+Neue:wght@400;700&display=swap" rel="stylesheet">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>Kid's Music Player</h1>
+        </header>
+
+        <main>
+            <div class="player-container">
+                <!-- Album Art / Visual Element -->
+                <div class="album-art">
+                    <div class="album-placeholder">
+                        <div class="music-note">♪</div>
+                    </div>
+                </div>
+
+                <!-- Song Info -->
+                <div class="song-info">
+                    <div class="song-title" id="song-title">Select a song to play</div>
+                </div>
+                
+                <!-- Audio Controls -->
+                <div class="controls">
+                    <button id="prev-button" class="control-button">
+                        <img src="{{ url_for('static', filename='svg/previous.svg') }}" alt="Previous">
+                    </button>
+                    <button id="play-button" class="control-button play-pause">
+                        <img src="{{ url_for('static', filename='svg/play.svg') }}" alt="Play" id="play-icon">
+                    </button>
+                    <button id="next-button" class="control-button">
+                        <img src="{{ url_for('static', filename='svg/next.svg') }}" alt="Next">
+                    </button>
+                </div>
+
+                <!-- Progress Bar -->
+                <div class="progress-container">
+                    <div class="progress-bar" id="progress-bar">
+                        <div class="progress" id="progress"></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Song List -->
+            <div class="song-list-container">
+                <h2>My Songs</h2>
+                <div id="song-list" class="song-list">
+                    <div class="loading-message">Loading songs...</div>
+                </div>
+                <div id="no-songs-message" class="no-songs-message" style="display: none;">
+                    <p>No songs found! Put MP3 files in your music folder.</p>
+                </div>
+            </div>
+        </main>
+
+        <footer>
+            <p>Kid-friendly Music Player for Raspberry Pi</p>
+        </footer>
+
+        <!-- Hidden audio element -->
+        <audio id="audio-player"></audio>
+    </div>
+
+    <script src="{{ url_for('static', filename='js/player.js') }}"></script>
+</body>
+</html>

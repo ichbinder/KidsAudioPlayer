@@ -1,0 +1,281 @@
+/* Reset and Base Styles */
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+:root {
+    /* Color Scheme */
+    --primary-color: #FF6B6B;    /* playful red */
+    --secondary-color: #4ECDC4;  /* cheerful teal */
+    --background-color: #FFFFFF; /* white */
+    --accent-color: #FFE66D;     /* sunny yellow */
+    --controls-color: #95E1D3;   /* soft mint */
+    
+    /* Font Sizes */
+    --font-large: 2rem;
+    --font-medium: 1.5rem;
+    --font-small: 1.2rem;
+    
+    /* Button Sizes */
+    --button-size: 80px; /* Minimum 64px as per requirements */
+}
+
+body {
+    font-family: 'Comic Neue', 'Comic Sans MS', cursive, sans-serif;
+    background-color: var(--background-color);
+    color: #333;
+    line-height: 1.6;
+    display: flex;
+    flex-direction: column;
+    min-height: 100vh;
+}
+
+.container {
+    width: 100%;
+    max-width: 720px; /* Optimized for 720x1280 display */
+    margin: 0 auto;
+    padding: 1rem;
+    display: flex;
+    flex-direction: column;
+    flex-grow: 1;
+}
+
+header {
+    text-align: center;
+    padding: 1rem 0;
+}
+
+h1 {
+    font-size: var(--font-large);
+    color: var(--primary-color);
+    margin-bottom: 1rem;
+}
+
+h2 {
+    font-size: var(--font-medium);
+    color: var(--secondary-color);
+    margin-bottom: 0.5rem;
+    text-align: center;
+}
+
+main {
+    flex-grow: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 2rem;
+}
+
+/* Player Container Styles */
+.player-container {
+    background-color: var(--accent-color);
+    border-radius: 25px;
+    padding: 2rem;
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    box-shadow: 0 10px 20px rgba(0, 0, 0, 0.1);
+}
+
+/* Album Art Styles */
+.album-art {
+    width: 200px;
+    height: 200px;
+    border-radius: 15px;
+    overflow: hidden;
+    margin-bottom: 1.5rem;
+    background-color: var(--secondary-color);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.album-placeholder {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
+    height: 100%;
+    background-color: var(--controls-color);
+}
+
+.music-note {
+    font-size: 5rem;
+    color: white;
+}
+
+/* Song Info Styles */
+.song-info {
+    margin-bottom: 1.5rem;
+    text-align: center;
+    min-height: 3rem;
+}
+
+.song-title {
+    font-size: var(--font-medium);
+    font-weight: bold;
+    margin-bottom: 0.5rem;
+    word-break: break-word;
+}
+
+/* Controls Styles */
+.controls {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 1.5rem;
+    margin-bottom: 1.5rem;
+}
+
+.control-button {
+    width: var(--button-size);
+    height: var(--button-size);
+    border-radius: 50%;
+    border: none;
+    background-color: var(--controls-color);
+    color: white;
+    font-size: var(--font-large);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: transform 0.2s, background-color 0.2s;
+}
+
+.control-button:hover, .control-button:focus {
+    background-color: var(--primary-color);
+    transform: scale(1.05);
+    outline: none;
+}
+
+.control-button:active {
+    transform: scale(0.95);
+}
+
+.play-pause {
+    width: calc(var(--button-size) * 1.2);
+    height: calc(var(--button-size) * 1.2);
+    background-color: var(--primary-color);
+}
+
+.play-pause:hover, .play-pause:focus {
+    background-color: var(--secondary-color);
+}
+
+.control-button img {
+    width: 50%;
+    height: 50%;
+}
+
+/* Progress Bar Styles */
+.progress-container {
+    width: 100%;
+    margin-bottom: 1rem;
+}
+
+.progress-bar {
+    width: 100%;
+    height: 15px;
+    background-color: #e0e0e0;
+    border-radius: 10px;
+    overflow: hidden;
+}
+
+.progress {
+    height: 100%;
+    background-color: var(--secondary-color);
+    width: 0%;
+    border-radius: 10px;
+    transition: width 0.1s;
+}
+
+/* Song List Styles */
+.song-list-container {
+    width: 100%;
+    padding: 1.5rem;
+    background-color: var(--controls-color);
+    border-radius: 25px;
+    box-shadow: 0 10px 20px rgba(0, 0, 0, 0.1);
+}
+
+.song-list {
+    max-height: 300px;
+    overflow-y: auto;
+    border-radius: 15px;
+    background-color: white;
+    padding: 0.5rem;
+}
+
+.song-item {
+    padding: 1rem;
+    margin-bottom: 0.5rem;
+    background-color: var(--accent-color);
+    border-radius: 10px;
+    font-size: var(--font-small);
+    cursor: pointer;
+    transition: background-color 0.2s;
+    word-break: break-word;
+}
+
+.song-item:hover, .song-item:focus {
+    background-color: var(--primary-color);
+    color: white;
+}
+
+.song-item.active {
+    background-color: var(--secondary-color);
+    color: white;
+}
+
+.loading-message, .no-songs-message {
+    padding: 2rem;
+    text-align: center;
+    font-size: var(--font-medium);
+    color: #666;
+}
+
+/* Footer Styles */
+footer {
+    text-align: center;
+    padding: 1rem 0;
+    margin-top: auto;
+    font-size: 1rem;
+    color: #666;
+}
+
+/* Responsive Adjustments */
+@media (max-height: 1280px) {
+    .container {
+        padding: 0.5rem;
+    }
+    
+    .player-container {
+        padding: 1.5rem;
+    }
+    
+    .album-art {
+        width: 150px;
+        height: 150px;
+    }
+    
+    .song-list {
+        max-height: 250px;
+    }
+}
+
+@media (max-width: 720px) {
+    :root {
+        --font-large: 1.8rem;
+        --font-medium: 1.2rem;
+        --font-small: 1rem;
+        --button-size: 70px;
+    }
+    
+    .controls {
+        gap: 1rem;
+    }
+}
