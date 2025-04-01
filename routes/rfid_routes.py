@@ -14,7 +14,54 @@ rfid_bp = Blueprint('rfid', __name__, url_prefix='/rfid')
 @rfid_bp.route('/')
 def rfid_management():
     """RFID tag management page"""
-    # Get all songs and tags
+    # Get all available songs from mp3 directory
+    from utils.file_handler import get_mp3_files
+    from app import MUSIC_DIR
+    import os
+    from sqlalchemy.exc import IntegrityError
+    
+    # Ensure all MP3 files are in the database
+    mp3_files = get_mp3_files(MUSIC_DIR)
+    default_playlist_id = 1
+    
+    # Check if we have a default playlist
+    from models import Playlist
+    default_playlist = Playlist.query.filter_by(id=default_playlist_id).first()
+    if not default_playlist:
+        # Create a default playlist
+        default_playlist = Playlist(name="Default")
+        db.session.add(default_playlist)
+        try:
+            db.session.commit()
+            default_playlist_id = default_playlist.id
+            logger.info(f"Created default playlist with ID {default_playlist_id}")
+        except Exception as e:
+            logger.error(f"Error creating default playlist: {e}")
+            db.session.rollback()
+            
+    # Add any missing songs to the database
+    for mp3 in mp3_files:
+        # Check if the song already exists in the database
+        existing_song = Song.query.filter_by(filename=mp3['filename']).first()
+        if not existing_song:
+            # Create new song entry
+            new_song = Song(
+                title=mp3['title'],
+                filename=mp3['filename'],
+                playlist_id=default_playlist_id
+            )
+            db.session.add(new_song)
+            try:
+                db.session.commit()
+                logger.info(f"Added song {mp3['title']} to database")
+            except IntegrityError:
+                logger.error(f"Database integrity error adding song {mp3['title']}")
+                db.session.rollback()
+            except Exception as e:
+                logger.error(f"Error adding song {mp3['title']} to database: {e}")
+                db.session.rollback()
+    
+    # Get all tags and songs for the template
     tags = RFIDController.get_all_tags()
     songs = Song.query.all()
     
