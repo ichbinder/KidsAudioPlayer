@@ -10,6 +10,8 @@ document.addEventListener('DOMContentLoaded', function() {
     const noSongsMessage = document.getElementById('no-songs-message');
     const progress = document.getElementById('progress');
     const progressBar = document.getElementById('progress-bar');
+    const albumCover = document.getElementById('album-cover');
+    const albumPlaceholder = document.getElementById('album-placeholder');
     
     // Player state
     let songs = [];
@@ -104,6 +106,16 @@ document.addEventListener('DOMContentLoaded', function() {
         
         const song = songs[currentSongIndex];
         songTitle.textContent = song.title;
+        
+        // Update album cover if available
+        if (song.cover_image) {
+            albumCover.src = `/api/cover/${encodeURIComponent(song.cover_image)}`;
+            albumCover.style.display = 'block';
+            albumPlaceholder.style.display = 'none';
+        } else {
+            albumCover.style.display = 'none';
+            albumPlaceholder.style.display = 'flex';
+        }
     }
 
     // Update the play button icon

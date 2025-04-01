@@ -71,6 +71,31 @@ def play_song(filename):
         logger.error(f"Error playing song {filename}: {e}")
         return jsonify({"error": str(e)}), 404
 
+@app.route('/api/cover/<path:filename>')
+def get_cover_image(filename):
+    """Get cover image for a song."""
+    try:
+        file_path = get_file_path(MUSIC_DIR, filename)
+        # Determine the appropriate mimetype
+        mimetype = None
+        if filename.lower().endswith('.jpg') or filename.lower().endswith('.jpeg'):
+            mimetype = 'image/jpeg'
+        elif filename.lower().endswith('.png'):
+            mimetype = 'image/png'
+        elif filename.lower().endswith('.gif'):
+            mimetype = 'image/gif'
+        elif filename.lower().endswith('.bmp'):
+            mimetype = 'image/bmp'
+        elif filename.lower().endswith('.webp'):
+            mimetype = 'image/webp'
+        else:
+            mimetype = 'image/jpeg'  # Default
+            
+        return send_file(file_path, mimetype=mimetype)
+    except Exception as e:
+        logger.error(f"Error getting cover image {filename}: {e}")
+        return jsonify({"error": str(e)}), 404
+
 
 
 # Error handlers
