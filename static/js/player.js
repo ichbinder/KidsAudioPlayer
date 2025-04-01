@@ -14,10 +14,10 @@ document.addEventListener('DOMContentLoaded', function() {
     const albumPlaceholder = document.getElementById('album-placeholder');
     const themeToggle = document.getElementById('theme-toggle');
     const themeIcon = document.getElementById('theme-icon');
-    const sleepTimerButton = document.getElementById('sleep-timer-button');
-    const sleepTimerOptions = document.getElementById('sleep-timer-options');
-    const sleepTimerText = document.getElementById('sleep-timer-text');
-    const timerOptions = document.querySelectorAll('.timer-option');
+    const sleepTimerButton = document.querySelector('.top-buttons #sleep-timer-button');
+    const sleepTimerOptions = document.querySelector('.top-buttons #sleep-timer-options');
+    const sleepTimerText = document.querySelector('.top-buttons #sleep-timer-text');
+    const timerOptions = document.querySelectorAll('.top-buttons .timer-option');
     
     // Player state
     let songs = [];

@@ -421,12 +421,19 @@ main {
 
 
 
-/* Theme Toggle */
-.theme-toggle {
+/* Top Buttons Group */
+.top-buttons {
     position: fixed;
     top: 20px;
     right: 20px;
     z-index: 100;
+    display: flex;
+    gap: 10px;
+    align-items: center;
+}
+
+/* Theme Toggle */
+.theme-toggle {
     width: 40px;
     height: 40px;
     border-radius: 50%;
@@ -437,7 +444,7 @@ main {
     align-items: center;
     cursor: pointer;
     box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
-    transition: background-color 0.3s;
+    transition: background-color 0.3s, transform 0.3s;
 }
 
 .theme-toggle:hover {
@@ -448,6 +455,30 @@ main {
 .theme-toggle img {
     width: 24px;
     height: 24px;
+}
+
+/* Top Timer Button */
+.top-timer-button {
+    background-color: var(--primary-color);
+    color: white;
+    border-radius: 20px;
+    padding: 8px 14px;
+    font-size: 0.85rem;
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+    transition: background-color 0.3s, transform 0.3s;
+}
+
+.top-timer-button:hover {
+    background-color: var(--accent-color);
+    transform: scale(1.05);
+}
+
+.top-timer-options {
+    position: absolute;
+    top: 100%;
+    right: 0;
+    transform: translateY(8px);
+    min-width: 150px;
 }
 
 /* Footer */

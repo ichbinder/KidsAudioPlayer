@@ -9,10 +9,27 @@
     <link href="https://fonts.googleapis.com/css2?family=Comic+Neue:wght@400;700&display=swap" rel="stylesheet">
 </head>
 <body>
-    <!-- Theme Toggle Button -->
-    <button id="theme-toggle" class="theme-toggle" title="Farbmodus wechseln">
-        <img id="theme-icon" src="{{ url_for('static', filename='svg/moon.svg') }}" alt="Farbmodus">
-    </button>
+    <!-- Top Buttons: Theme Toggle and Sleep Timer -->
+    <div class="top-buttons">
+        <!-- Sleep Timer Button (moved from below) -->
+        <button id="sleep-timer-button" class="sleep-timer-button top-timer-button">
+            <img src="{{ url_for('static', filename='svg/timer.svg') }}" alt="Schlaf-Timer">
+            <span id="sleep-timer-text">Schlaf-Timer</span>
+        </button>
+        <!-- Sleep Timer Options -->
+        <div id="sleep-timer-options" class="sleep-timer-options top-timer-options hidden">
+            <button class="timer-option" data-minutes="5">5 Min</button>
+            <button class="timer-option" data-minutes="10">10 Min</button>
+            <button class="timer-option" data-minutes="15">15 Min</button>
+            <button class="timer-option" data-minutes="20">20 Min</button>
+            <button class="timer-option" data-minutes="0">Aus</button>
+        </div>
+        
+        <!-- Theme Toggle Button -->
+        <button id="theme-toggle" class="theme-toggle" title="Farbmodus wechseln">
+            <img id="theme-icon" src="{{ url_for('static', filename='svg/moon.svg') }}" alt="Farbmodus">
+        </button>
+    </div>
     <div class="container">
         <header>
             <h1>Kid's Music Player</h1>
@@ -53,20 +70,7 @@
                     </div>
                 </div>
                 
-                <!-- Sleep Timer -->
-                <div class="sleep-timer-container">
-                    <button id="sleep-timer-button" class="sleep-timer-button">
-                        <img src="{{ url_for('static', filename='svg/timer.svg') }}" alt="Schlaf-Timer">
-                        <span id="sleep-timer-text">Schlaf-Timer</span>
-                    </button>
-                    <div id="sleep-timer-options" class="sleep-timer-options hidden">
-                        <button class="timer-option" data-minutes="5">5 Min</button>
-                        <button class="timer-option" data-minutes="10">10 Min</button>
-                        <button class="timer-option" data-minutes="15">15 Min</button>
-                        <button class="timer-option" data-minutes="20">20 Min</button>
-                        <button class="timer-option" data-minutes="0">Aus</button>
-                    </div>
-                </div>
+                <!-- Sleep Timer was moved to the top -->
             </div>
 
             <!-- Song List -->
