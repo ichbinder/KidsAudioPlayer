@@ -347,6 +347,16 @@ main {
     z-index: 1;
 }
 
+.playing .song-item.active {
+    animation: activeSongPulse 2s infinite ease-in-out;
+}
+
+@keyframes activeSongPulse {
+    0% { transform: scale(1.05); box-shadow: 0 8px 20px rgba(255, 107, 107, 0.4); }
+    50% { transform: scale(1.1); box-shadow: 0 8px 25px rgba(255, 107, 107, 0.6); }
+    100% { transform: scale(1.05); box-shadow: 0 8px 20px rgba(255, 107, 107, 0.4); }
+}
+
 .song-item.active::before {
     content: '';
     position: absolute;
@@ -409,6 +419,16 @@ main {
     transform: scale(1.1);
 }
 
+.playing .song-item.active .song-item-cover img {
+    animation: activeCoverSpin 10s infinite linear;
+    transform-origin: center;
+}
+
+@keyframes activeCoverSpin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
 .song-item-cover .default-cover {
     font-size: 40px;
     color: white;
@@ -420,6 +440,18 @@ main {
 
 .song-item:hover .song-item-cover .default-cover {
     transform: rotate(0deg) scale(1.2);
+}
+
+.playing .song-item.active .song-item-cover .default-cover {
+    animation: activeNoteSpin 5s infinite ease-in-out;
+}
+
+@keyframes activeNoteSpin {
+    0% { transform: rotate(-10deg) scale(1); text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3); }
+    25% { transform: rotate(15deg) scale(1.2); text-shadow: 0 4px 8px rgba(0, 0, 0, 0.5); }
+    50% { transform: rotate(-5deg) scale(1.4); text-shadow: 0 6px 12px rgba(0, 0, 0, 0.7); }
+    75% { transform: rotate(10deg) scale(1.2); text-shadow: 0 4px 8px rgba(0, 0, 0, 0.5); }
+    100% { transform: rotate(-10deg) scale(1); text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3); }
 }
 
 .song-item-title {
