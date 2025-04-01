@@ -12,6 +12,8 @@ document.addEventListener('DOMContentLoaded', function() {
     const progressBar = document.getElementById('progress-bar');
     const albumCover = document.getElementById('album-cover');
     const albumPlaceholder = document.getElementById('album-placeholder');
+    const themeToggle = document.getElementById('theme-toggle');
+    const themeIcon = document.getElementById('theme-icon');
     
     // Player state
     let songs = [];
@@ -253,6 +255,47 @@ document.addEventListener('DOMContentLoaded', function() {
         updatePlayButtonIcon();
     });
 
+    // Theme Management Functions
+    function setTheme(theme) {
+        document.documentElement.setAttribute('data-theme', theme);
+        localStorage.setItem('theme', theme);
+        
+        // Update the theme toggle button icon
+        if (theme === 'dark') {
+            themeIcon.src = '/static/svg/sun.svg';
+            themeToggle.title = 'Zum hellen Modus wechseln';
+        } else {
+            themeIcon.src = '/static/svg/moon.svg';
+            themeToggle.title = 'Zum dunklen Modus wechseln';
+        }
+    }
+    
+    function initTheme() {
+        // Check for saved theme preference or use device preference
+        const savedTheme = localStorage.getItem('theme');
+        
+        if (savedTheme) {
+            setTheme(savedTheme);
+        } else if (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) {
+            // Use dark theme if user prefers dark mode
+            setTheme('dark');
+        } else {
+            // Default to light theme
+            setTheme('light');
+        }
+    }
+    
+    // Theme toggle button click handler
+    themeToggle.addEventListener('click', () => {
+        // Toggle between light and dark themes
+        const currentTheme = document.documentElement.getAttribute('data-theme');
+        const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
+        setTheme(newTheme);
+    });
+    
+    // Initialize theme
+    initTheme();
+    
     // Load songs on page load
     loadSongs();
 });

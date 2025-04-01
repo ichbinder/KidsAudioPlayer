@@ -1,13 +1,26 @@
-/* Base styles */
+/* Theme Variables */
 :root {
+    /* Light Theme (Default) */
     --primary-color: #FF6B6B;
     --secondary-color: #4ECDC4;
     --background-color: #FFFFFF;
     --accent-color: #FFE66D;
     --control-color: #95E1D3;
     --text-color: #333333;
+    --card-background: #F9F9F9;
     --border-radius: 20px;
     --button-size: 64px;
+}
+
+/* Dark Theme */
+[data-theme="dark"] {
+    --primary-color: #FF6B6B;
+    --secondary-color: #2D8C85;
+    --background-color: #121212;
+    --accent-color: #E6C93F;
+    --control-color: #64A69D;
+    --text-color: #E1E1E1;
+    --card-background: #1E1E1E;
 }
 
 body {
@@ -255,7 +268,7 @@ main {
 .song-item {
     display: flex;
     flex-direction: column;
-    background-color: #f9f9f9;
+    background-color: var(--card-background);
     border-radius: 10px;
     cursor: pointer;
     transition: transform 0.2s, background-color 0.2s;
@@ -317,12 +330,41 @@ main {
 
 
 
+/* Theme Toggle */
+.theme-toggle {
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    z-index: 100;
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    background-color: var(--primary-color);
+    border: none;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    cursor: pointer;
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+    transition: background-color 0.3s;
+}
+
+.theme-toggle:hover {
+    background-color: var(--accent-color);
+    transform: scale(1.1);
+}
+
+.theme-toggle img {
+    width: 24px;
+    height: 24px;
+}
+
 /* Footer */
 footer {
     text-align: center;
     margin-top: 30px;
     padding: 20px 0;
-    color: #888;
+    color: var(--text-color);
 }
 
 /* Responsive styles */
