@@ -439,34 +439,29 @@ document.addEventListener('DOMContentLoaded', function() {
     loadSongs();
     
     // RFID functionality
-    // Function to check for RFID events via Server-Sent Events (SSE)
+    // Function to check for RFID events via polling
     function setupRFIDListener() {
-        if (typeof EventSource === "undefined") {
-            console.error("Your browser does not support Server-Sent Events");
-            rfidStatus.innerHTML = '<span class="rfid-status-icon">❌</span><span class="rfid-status-text">RFID nicht unterstützt</span>';
-            rfidStatus.classList.add('error');
-            return;
+        let lastEventTimestamp = null;
+        let isTagPresent = false;
+        
+        // Update RFID status display
+        function updateRFIDStatus(status, message, isActive = false, isError = false) {
+            rfidStatus.innerHTML = `<span class="rfid-status-icon">${status}</span><span class="rfid-status-text">${message}</span>`;
+            
+            rfidStatus.classList.toggle('active', isActive);
+            rfidStatus.classList.toggle('error', isError);
         }
         
-        // Create an EventSource to listen for RFID events
-        let eventSource;
-        
-        function connectEventSource() {
-            eventSource = new EventSource('/api/rfid/events');
+        // Handle tag_present event
+        function handleTagPresent(data) {
+            console.log('RFID tag present:', data);
             
-            eventSource.onopen = function() {
-                console.log('RFID EventSource connection established');
-                rfidStatus.innerHTML = '<span class="rfid-status-icon">🔄</span><span class="rfid-status-text">RFID bereit</span>';
-                rfidStatus.classList.remove('active', 'error');
-            };
+            // Update UI
+            updateRFIDStatus('🎵', `RFID-Tag: ${data.name || data.tag_id}`, true, false);
             
-            eventSource.addEventListener('tag_present', function(event) {
-                const data = JSON.parse(event.data);
-                console.log('RFID tag present:', data);
-                
-                rfidStatus.innerHTML = `<span class="rfid-status-icon">🎵</span><span class="rfid-status-text">RFID-Tag: ${data.name || data.tag_id}</span>`;
-                rfidStatus.classList.add('active');
-                rfidStatus.classList.remove('error');
+            // Only play if the tag was just detected (not on every poll)
+            if (!isTagPresent) {
+                isTagPresent = true;
                 
                 // Play the associated song if it's available
                 if (data.song_id) {
@@ -474,7 +469,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     const songIndex = songs.findIndex(song => song.id === data.song_id);
                     if (songIndex !== -1) {
                         playSong(songIndex);
-                    } else {
+                    } else if (data.filename) {
                         // If the song is not in our current list, we need to play it directly
                         audioPlayer.src = `/api/play/${encodeURIComponent(data.filename)}`;
                         audioPlayer.play()
@@ -489,14 +484,19 @@ document.addEventListener('DOMContentLoaded', function() {
                             });
                     }
                 }
-            });
+            }
+        }
+        
+        // Handle tag_absent event
+        function handleTagAbsent(data) {
+            console.log('RFID tag removed:', data);
             
-            eventSource.addEventListener('tag_absent', function(event) {
-                const data = JSON.parse(event.data);
-                console.log('RFID tag removed:', data);
-                
-                rfidStatus.innerHTML = '<span class="rfid-status-icon">🔄</span><span class="rfid-status-text">RFID bereit</span>';
-                rfidStatus.classList.remove('active', 'error');
+            // Update UI
+            updateRFIDStatus('🔄', 'RFID bereit', false, false);
+            
+            // Only pause if the tag was just removed (not on every poll)
+            if (isTagPresent) {
+                isTagPresent = false;
                 
                 // Pause the playback
                 if (isPlaying) {
@@ -504,29 +504,41 @@ document.addEventListener('DOMContentLoaded', function() {
                     isPlaying = false;
                     updatePlayButtonIcon();
                 }
-            });
-            
-            eventSource.onerror = function(event) {
-                console.error('RFID EventSource error:', event);
-                rfidStatus.innerHTML = '<span class="rfid-status-icon">⚠️</span><span class="rfid-status-text">RFID Verbindungsfehler</span>';
-                rfidStatus.classList.add('error');
-                rfidStatus.classList.remove('active');
-                
-                // Close the current connection and try to reconnect after a delay
-                eventSource.close();
-                setTimeout(connectEventSource, 5000);
-            };
+            }
         }
         
-        // Initial connection
-        connectEventSource();
+        // Poll for RFID status
+        function pollRFIDStatus() {
+            fetch('/api/rfid/status')
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error('Network response was not ok');
+                    }
+                    return response.json();
+                })
+                .then(data => {
+                    if (data.status === 'active' && data.timestamp !== lastEventTimestamp) {
+                        lastEventTimestamp = data.timestamp;
+                        
+                        if (data.event === 'tag_present') {
+                            handleTagPresent(data.data);
+                        } else if (data.event === 'tag_absent') {
+                            handleTagAbsent(data.data);
+                        }
+                    }
+                })
+                .catch(error => {
+                    console.error('Error polling RFID status:', error);
+                    updateRFIDStatus('⚠️', 'RFID Verbindungsfehler', false, true);
+                });
+        }
         
-        // Cleanup when the page is unloaded
-        window.addEventListener('beforeunload', function() {
-            if (eventSource) {
-                eventSource.close();
-            }
-        });
+        // Initial UI state
+        updateRFIDStatus('🔄', 'RFID bereit', false, false);
+        
+        // Start polling
+        pollRFIDStatus();
+        setInterval(pollRFIDStatus, 2000); // Poll every 2 seconds
     }
     
     // Setup RFID listener
