@@ -143,12 +143,16 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     }
 
-    // Update the play button icon
+    // Update the play button icon and player state
     function updatePlayButtonIcon() {
+        const playerContainer = document.querySelector('.player-container');
+        
         if (isPlaying) {
             playIcon.src = '/static/svg/pause.svg';
+            playerContainer.classList.add('playing');
         } else {
             playIcon.src = '/static/svg/play.svg';
+            playerContainer.classList.remove('playing');
         }
     }
 
