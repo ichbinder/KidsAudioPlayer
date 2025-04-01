@@ -1,0 +1,350 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>RFID-Tag Verwaltung - Kid's Music Player</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/styles.css') }}">
+    <link href="https://fonts.googleapis.com/css2?family=Comic+Neue:wght@400;700&display=swap" rel="stylesheet">
+    <style>
+        /* Additional styles for RFID management */
+        .management-container {
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        
+        .management-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+        
+        .card {
+            background-color: var(--card-background);
+            border-radius: var(--border-radius);
+            padding: 20px;
+            margin-bottom: 20px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+        }
+        
+        .form-group {
+            margin-bottom: 15px;
+        }
+        
+        label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+        }
+        
+        input, select {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            font-family: inherit;
+            font-size: 1rem;
+        }
+        
+        .button {
+            background-color: var(--primary-color);
+            color: white;
+            border: none;
+            padding: 10px 15px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-family: inherit;
+            font-size: 1rem;
+            transition: background-color 0.2s;
+        }
+        
+        .button:hover {
+            background-color: #e55a5a;
+        }
+        
+        .button.secondary {
+            background-color: var(--secondary-color);
+        }
+        
+        .button.secondary:hover {
+            background-color: #3db8b0;
+        }
+        
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+        }
+        
+        th, td {
+            padding: 10px;
+            text-align: left;
+            border-bottom: 1px solid #ddd;
+        }
+        
+        th {
+            background-color: var(--secondary-color);
+            color: white;
+        }
+        
+        tr:hover {
+            background-color: rgba(0, 0, 0, 0.05);
+        }
+        
+        .tag-actions {
+            display: flex;
+            gap: 10px;
+        }
+        
+        .delete-button {
+            background-color: #ff4d4d;
+            color: white;
+            border: none;
+            padding: 5px 10px;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+        
+        .delete-button:hover {
+            background-color: #ff3333;
+        }
+        
+        .flash-messages {
+            margin-bottom: 20px;
+        }
+        
+        .flash-message {
+            padding: 10px 15px;
+            border-radius: 5px;
+            margin-bottom: 10px;
+        }
+        
+        .flash-message.success {
+            background-color: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+        
+        .flash-message.error {
+            background-color: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+        
+        .scan-status {
+            margin-top: 15px;
+            padding: 15px;
+            border-radius: 5px;
+            text-align: center;
+        }
+        
+        .scan-status.scanning {
+            background-color: #fff3cd;
+            color: #856404;
+        }
+        
+        .scan-status.detected {
+            background-color: #d4edda;
+            color: #155724;
+        }
+        
+        .scan-status.error {
+            background-color: #f8d7da;
+            color: #721c24;
+        }
+        
+        .nav-links {
+            display: flex;
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+        
+        .nav-link {
+            text-decoration: none;
+            color: var(--secondary-color);
+            font-weight: bold;
+        }
+        
+        .nav-link:hover {
+            text-decoration: underline;
+        }
+        
+        .loading-indicator {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 3px solid rgba(255, 255, 255, 0.3);
+            border-radius: 50%;
+            border-top-color: white;
+            animation: spin 1s ease-in-out infinite;
+            margin-right: 10px;
+        }
+        
+        @keyframes spin {
+            to {
+                transform: rotate(360deg);
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="management-container">
+        <div class="management-header">
+            <h1>RFID-Tag Verwaltung</h1>
+        </div>
+        
+        <div class="nav-links">
+            <a href="{{ url_for('index') }}" class="nav-link">← Zurück zum Player</a>
+        </div>
+        
+        {% if get_flashed_messages() %}
+        <div class="flash-messages">
+            {% for category, message in get_flashed_messages(with_categories=true) %}
+                <div class="flash-message {{ category }}">{{ message }}</div>
+            {% endfor %}
+        </div>
+        {% endif %}
+        
+        <div class="card">
+            <h2>Neuen RFID-Tag registrieren</h2>
+            
+            <form id="register-form" action="{{ url_for('rfid.register_tag') }}" method="POST">
+                <div class="form-group">
+                    <label for="tag_id">RFID-Tag ID:</label>
+                    <input type="text" id="tag_id" name="tag_id" required>
+                </div>
+                
+                <div class="form-group">
+                    <label for="name">Name (optional):</label>
+                    <input type="text" id="name" name="name" placeholder="z.B. 'Karte mit Elefant'">
+                </div>
+                
+                <div class="form-group">
+                    <label for="song_id">Song:</label>
+                    <select id="song_id" name="song_id" required>
+                        <option value="">-- Song auswählen --</option>
+                        {% for song in songs %}
+                            <option value="{{ song.id }}">{{ song.title }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                
+                <button type="submit" class="button">Registrieren</button>
+                <button type="button" id="scan-button" class="button secondary">RFID-Tag scannen</button>
+            </form>
+            
+            <div id="scan-status" class="scan-status" style="display: none;"></div>
+        </div>
+        
+        <div class="card">
+            <h2>Registrierte RFID-Tags</h2>
+            
+            {% if tags %}
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Name</th>
+                            <th>Tag ID</th>
+                            <th>Verknüpfter Song</th>
+                            <th>Zuletzt verwendet</th>
+                            <th>Aktionen</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for tag in tags %}
+                            <tr>
+                                <td>{{ tag.name or 'Kein Name' }}</td>
+                                <td>{{ tag.tag_id }}</td>
+                                <td>{{ tag.song.title }}</td>
+                                <td>{{ tag.last_used.strftime('%d.%m.%Y %H:%M') if tag.last_used else 'Nie' }}</td>
+                                <td class="tag-actions">
+                                    <form action="{{ url_for('rfid.unregister_tag', tag_id=tag.tag_id) }}" method="POST">
+                                        <button type="submit" class="delete-button">Entfernen</button>
+                                    </form>
+                                </td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            {% else %}
+                <p>Keine RFID-Tags registriert.</p>
+            {% endif %}
+        </div>
+    </div>
+    
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const scanButton = document.getElementById('scan-button');
+            const scanStatus = document.getElementById('scan-status');
+            const tagIdInput = document.getElementById('tag_id');
+            let scanning = false;
+            let scanInterval;
+            
+            // Function to scan for RFID tags
+            function scanForTag() {
+                // Show scanning status
+                scanStatus.innerHTML = '<span class="loading-indicator"></span> Scanne nach RFID-Tag...';
+                scanStatus.className = 'scan-status scanning';
+                scanStatus.style.display = 'block';
+                
+                fetch('/rfid/scan')
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.error) {
+                            scanStatus.innerHTML = 'Fehler: ' + data.error;
+                            scanStatus.className = 'scan-status error';
+                            clearInterval(scanInterval);
+                            scanning = false;
+                            scanButton.textContent = 'RFID-Tag scannen';
+                        } else if (data.detected) {
+                            // Tag detected!
+                            clearInterval(scanInterval);
+                            scanning = false;
+                            scanButton.textContent = 'RFID-Tag scannen';
+                            
+                            // Fill in the tag ID
+                            tagIdInput.value = data.tag_id;
+                            
+                            // Update status
+                            if (data.registered) {
+                                scanStatus.innerHTML = `RFID-Tag erkannt: ${data.tag_id}<br>
+                                                      Bereits registriert für Song: ${data.song.title}`;
+                            } else {
+                                scanStatus.innerHTML = `RFID-Tag erkannt: ${data.tag_id}<br>
+                                                      Tag ist noch nicht registriert.`;
+                            }
+                            scanStatus.className = 'scan-status detected';
+                        }
+                    })
+                    .catch(error => {
+                        scanStatus.innerHTML = 'Fehler beim Scannen: ' + error;
+                        scanStatus.className = 'scan-status error';
+                    });
+            }
+            
+            // Toggle scanning when the scan button is clicked
+            scanButton.addEventListener('click', function() {
+                if (scanning) {
+                    // Stop scanning
+                    clearInterval(scanInterval);
+                    scanning = false;
+                    scanButton.textContent = 'RFID-Tag scannen';
+                    scanStatus.style.display = 'none';
+                } else {
+                    // Start scanning
+                    scanning = true;
+                    scanButton.textContent = 'Scannen stoppen';
+                    
+                    // Initial scan
+                    scanForTag();
+                    
+                    // Set up interval to poll for RFID tags
+                    scanInterval = setInterval(scanForTag, 2000);
+                }
+            });
+        });
+    </script>
+</body>
+</html>

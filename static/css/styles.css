@@ -457,6 +457,31 @@ main {
     height: 24px;
 }
 
+/* RFID Admin Link */
+.rfid-admin-link {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    background-color: var(--secondary-color);
+    border: none;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    cursor: pointer;
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+    transition: background-color 0.3s, transform 0.3s;
+}
+
+.rfid-admin-link:hover {
+    background-color: var(--accent-color);
+    transform: scale(1.1);
+}
+
+.rfid-admin-link img {
+    width: 24px;
+    height: 24px;
+}
+
 /* Top Timer Button */
 .top-timer-button {
     background-color: var(--primary-color);
@@ -516,6 +541,49 @@ main {
     left: 35%;
     transform: translateX(-50%) translateY(8px);
     min-width: 150px;
+}
+
+/* RFID Status */
+.rfid-status-container {
+    display: flex;
+    justify-content: center;
+    margin: 10px 0;
+}
+
+.rfid-status {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    background-color: var(--card-background);
+    padding: 8px 15px;
+    border-radius: 20px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    font-size: 0.9rem;
+    transition: background-color 0.3s;
+}
+
+.rfid-status.active {
+    background-color: var(--primary-color);
+    color: white;
+    animation: pulse-soft 2s infinite;
+}
+
+.rfid-status.error {
+    background-color: #ff5555;
+    color: white;
+}
+
+.rfid-status-icon {
+    font-size: 1.2rem;
+}
+
+.rfid-status.active .rfid-status-icon {
+    animation: spin 2s linear infinite;
+}
+
+@keyframes spin {
+    from { transform: rotate(0deg); }
+    to { transform: rotate(360deg); }
 }
 
 /* Footer */

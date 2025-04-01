@@ -1,5 +1,22 @@
 document.addEventListener('DOMContentLoaded', function() {
     // DOM Elements
+    
+    // Create RFID status element
+    const rfidStatusContainer = document.createElement('div');
+    rfidStatusContainer.className = 'rfid-status-container';
+    rfidStatusContainer.innerHTML = `
+        <div class="rfid-status" id="rfid-status">
+            <span class="rfid-status-icon">🔄</span>
+            <span class="rfid-status-text">RFID bereit</span>
+        </div>
+    `;
+    
+    // Add it to the DOM after the header
+    const header = document.querySelector('header');
+    header.parentNode.insertBefore(rfidStatusContainer, header.nextSibling);
+    
+    // Reference to RFID status elements
+    const rfidStatus = document.getElementById('rfid-status');
     const audioPlayer = document.getElementById('audio-player');
     const playButton = document.getElementById('play-button');
     const playIcon = document.getElementById('play-icon');
@@ -420,4 +437,98 @@ document.addEventListener('DOMContentLoaded', function() {
     
     // Load songs on page load
     loadSongs();
+    
+    // RFID functionality
+    // Function to check for RFID events via Server-Sent Events (SSE)
+    function setupRFIDListener() {
+        if (typeof EventSource === "undefined") {
+            console.error("Your browser does not support Server-Sent Events");
+            rfidStatus.innerHTML = '<span class="rfid-status-icon">❌</span><span class="rfid-status-text">RFID nicht unterstützt</span>';
+            rfidStatus.classList.add('error');
+            return;
+        }
+        
+        // Create an EventSource to listen for RFID events
+        let eventSource;
+        
+        function connectEventSource() {
+            eventSource = new EventSource('/api/rfid/events');
+            
+            eventSource.onopen = function() {
+                console.log('RFID EventSource connection established');
+                rfidStatus.innerHTML = '<span class="rfid-status-icon">🔄</span><span class="rfid-status-text">RFID bereit</span>';
+                rfidStatus.classList.remove('active', 'error');
+            };
+            
+            eventSource.addEventListener('tag_present', function(event) {
+                const data = JSON.parse(event.data);
+                console.log('RFID tag present:', data);
+                
+                rfidStatus.innerHTML = `<span class="rfid-status-icon">🎵</span><span class="rfid-status-text">RFID-Tag: ${data.name || data.tag_id}</span>`;
+                rfidStatus.classList.add('active');
+                rfidStatus.classList.remove('error');
+                
+                // Play the associated song if it's available
+                if (data.song_id) {
+                    // Find the song in our songs array
+                    const songIndex = songs.findIndex(song => song.id === data.song_id);
+                    if (songIndex !== -1) {
+                        playSong(songIndex);
+                    } else {
+                        // If the song is not in our current list, we need to play it directly
+                        audioPlayer.src = `/api/play/${encodeURIComponent(data.filename)}`;
+                        audioPlayer.play()
+                            .then(() => {
+                                isPlaying = true;
+                                updatePlayButtonIcon();
+                                songTitle.textContent = data.title || 'Unknown Song';
+                            })
+                            .catch(error => {
+                                console.error('Error playing song from RFID:', error);
+                                songTitle.textContent = 'Error playing song';
+                            });
+                    }
+                }
+            });
+            
+            eventSource.addEventListener('tag_absent', function(event) {
+                const data = JSON.parse(event.data);
+                console.log('RFID tag removed:', data);
+                
+                rfidStatus.innerHTML = '<span class="rfid-status-icon">🔄</span><span class="rfid-status-text">RFID bereit</span>';
+                rfidStatus.classList.remove('active', 'error');
+                
+                // Pause the playback
+                if (isPlaying) {
+                    audioPlayer.pause();
+                    isPlaying = false;
+                    updatePlayButtonIcon();
+                }
+            });
+            
+            eventSource.onerror = function(event) {
+                console.error('RFID EventSource error:', event);
+                rfidStatus.innerHTML = '<span class="rfid-status-icon">⚠️</span><span class="rfid-status-text">RFID Verbindungsfehler</span>';
+                rfidStatus.classList.add('error');
+                rfidStatus.classList.remove('active');
+                
+                // Close the current connection and try to reconnect after a delay
+                eventSource.close();
+                setTimeout(connectEventSource, 5000);
+            };
+        }
+        
+        // Initial connection
+        connectEventSource();
+        
+        // Cleanup when the page is unloaded
+        window.addEventListener('beforeunload', function() {
+            if (eventSource) {
+                eventSource.close();
+            }
+        });
+    }
+    
+    // Setup RFID listener
+    setupRFIDListener();
 });

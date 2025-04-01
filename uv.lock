@@ -215,6 +215,19 @@ wheels = [
 ]
 
 [[package]]
+name = "mfrc522"
+version = "0.0.7"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "rpi-gpio" },
+    { name = "spidev" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/3c/34/f2e893baa79d82d4faad8abb7c5c0fcd138d367f6f38071f7afe883f65a2/mfrc522-0.0.7.tar.gz", hash = "sha256:74c7020a4fc4870f5d7022542c36143fba771055a2fae2e5929e6a1159d2bf00", size = 5652 }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/d5/b5/d33c0634cece0931c3c4e0978b0db58f248045c3b379ccf2d512b76fe044/mfrc522-0.0.7-py3-none-any.whl", hash = "sha256:874fd0385a7e40190063b60af83d615534b1f764c6b776fed1fcc94551c1e62f", size = 18610 },
+]
+
+[[package]]
 name = "packaging"
 version = "24.2"
 source = { registry = "https://pypi.org/simple" }
@@ -275,7 +288,10 @@ dependencies = [
     { name = "flask" },
     { name = "flask-sqlalchemy" },
     { name = "gunicorn" },
+    { name = "mfrc522" },
     { name = "psycopg2-binary" },
+    { name = "rpi-gpio" },
+    { name = "sqlalchemy" },
 ]
 
 [package.metadata]
@@ -284,8 +300,23 @@ requires-dist = [
     { name = "flask", specifier = ">=3.1.0" },
     { name = "flask-sqlalchemy", specifier = ">=3.1.1" },
     { name = "gunicorn", specifier = ">=23.0.0" },
+    { name = "mfrc522", specifier = ">=0.0.7" },
     { name = "psycopg2-binary", specifier = ">=2.9.10" },
+    { name = "rpi-gpio", specifier = ">=0.7.1" },
+    { name = "sqlalchemy", specifier = ">=2.0.40" },
 ]
+
+[[package]]
+name = "rpi-gpio"
+version = "0.7.1"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/c4/0f/10b524a12b3445af1c607c27b2f5ed122ef55756e29942900e5c950735f2/RPi.GPIO-0.7.1.tar.gz", hash = "sha256:cd61c4b03c37b62bba4a5acfea9862749c33c618e0295e7e90aa4713fb373b70", size = 29090 }
+
+[[package]]
+name = "spidev"
+version = "3.6"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/c7/d9/401c0a7be089e02826cf2c201f489876b601f15be100fe391ef9c2faed83/spidev-3.6.tar.gz", hash = "sha256:14dbc37594a4aaef85403ab617985d3c3ef464d62bc9b769ef552db53701115b", size = 11917 }
 
 [[package]]
 name = "sqlalchemy"

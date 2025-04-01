@@ -46,9 +46,61 @@ if not os.path.exists(MUSIC_DIR):
     except Exception as e:
         logger.error(f"Failed to create MP3s directory: {e}")
 
+# Initialize RFID Player
+from utils.rfid_player import rfid_player
+rfid_player.init_app(app)
+
+# Register blueprints
+from routes.rfid_routes import rfid_bp
+from routes.api_routes import api_bp, emit_event
+
+app.register_blueprint(rfid_bp)
+app.register_blueprint(api_bp)
+
+# Register RFID player callback to emit events
+def rfid_callback(action, data):
+    """Callback for RFID player events"""
+    if action == 'play':
+        emit_event('tag_present', {
+            'tag_id': data.get('tag_id', 'unknown'),
+            'name': data.get('name', ''),
+            'song_id': data.get('song_id'),
+            'filename': data.get('filename'),
+            'title': data.get('title')
+        })
+    elif action == 'pause':
+        emit_event('tag_absent', {
+            'tag_id': data.get('tag_id', 'unknown')
+        })
+
+rfid_player.register_client_callback(rfid_callback)
+
+# We'll start the RFID player in the route handler instead of at app startup
+# to avoid issues with multiple workers in Gunicorn
+
+# Global flag to track if RFID player is started
+RFID_PLAYER_STARTED = False
+
+# Cleanup RFID player when app shuts down
+@app.teardown_appcontext
+def cleanup_rfid_player(exception=None):
+    """Stop the RFID player when the app shuts down"""
+    rfid_player.stop()
+
 @app.route('/')
 def index():
     """Render the main page of the MP3 player."""
+    global RFID_PLAYER_STARTED
+    
+    # Start RFID player if not already started
+    if not RFID_PLAYER_STARTED:
+        try:
+            rfid_player.start()
+            RFID_PLAYER_STARTED = True
+            logger.info("RFID player started")
+        except Exception as e:
+            logger.error(f"Error starting RFID player: {e}")
+    
     return render_template('index.html')
 
 @app.route('/api/songs')
@@ -56,6 +108,14 @@ def get_songs():
     """Get list of MP3 files from the music directory."""
     try:
         songs = get_mp3_files(MUSIC_DIR)
+        
+        # Add database IDs to songs if they exist in the database
+        from models import Song
+        for song in songs:
+            db_song = Song.query.filter_by(filename=song['filename']).first()
+            if db_song:
+                song['id'] = db_song.id
+        
         return jsonify(songs)
     except Exception as e:
         logger.error(f"Error getting songs: {e}")
@@ -95,8 +155,6 @@ def get_cover_image(filename):
     except Exception as e:
         logger.error(f"Error getting cover image {filename}: {e}")
         return jsonify({"error": str(e)}), 404
-
-
 
 # Error handlers
 @app.errorhandler(404)

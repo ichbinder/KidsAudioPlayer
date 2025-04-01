@@ -25,6 +25,11 @@
             <button class="timer-option" data-minutes="0">Aus</button>
         </div>
         
+        <!-- RFID Management Link -->
+        <a href="{{ url_for('rfid.rfid_management') }}" class="rfid-admin-link" title="RFID-Tags verwalten">
+            <img src="{{ url_for('static', filename='svg/settings.svg') }}" alt="RFID verwalten">
+        </a>
+        
         <!-- Theme Toggle Button -->
         <button id="theme-toggle" class="theme-toggle" title="Farbmodus wechseln">
             <img id="theme-icon" src="{{ url_for('static', filename='svg/moon.svg') }}" alt="Farbmodus">
