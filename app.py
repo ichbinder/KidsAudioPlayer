@@ -1,7 +1,9 @@
 import os
 import logging
-from flask import Flask, render_template, jsonify, send_file
+from datetime import datetime
+from flask import Flask, render_template, jsonify, send_file, request
 from utils.file_handler import get_mp3_files, get_file_path
+from db import db
 
 # Configure logging
 logging.basicConfig(level=logging.DEBUG)
@@ -10,6 +12,30 @@ logger = logging.getLogger(__name__)
 # Create the Flask application
 app = Flask(__name__)
 app.secret_key = os.environ.get("SESSION_SECRET", "dev_secret_key")
+
+# Configure database
+database_url = os.environ.get("DATABASE_URL")
+if database_url:
+    app.config["SQLALCHEMY_DATABASE_URI"] = database_url
+    app.config["SQLALCHEMY_ENGINE_OPTIONS"] = {
+        "pool_recycle": 300,
+        "pool_pre_ping": True,
+    }
+    logger.info("Database configuration set with URL from environment")
+else:
+    logger.warning("DATABASE_URL not found in environment")
+    # Fallback for development - use SQLite
+    app.config["SQLALCHEMY_DATABASE_URI"] = "sqlite:///kid_music_player.db"
+    logger.info("Using SQLite database as fallback")
+
+# Initialize database with app
+db.init_app(app)
+
+# Import models and create tables
+with app.app_context():
+    import models
+    db.create_all()
+    logger.info("Database tables created")
 
 # Define the MP3s directory - default to a 'mp3s' folder in the user's home directory
 MUSIC_DIR = os.environ.get("MUSIC_DIR", os.path.expanduser("~/mp3s"))
