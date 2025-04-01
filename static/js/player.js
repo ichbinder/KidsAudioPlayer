@@ -14,11 +14,17 @@ document.addEventListener('DOMContentLoaded', function() {
     const albumPlaceholder = document.getElementById('album-placeholder');
     const themeToggle = document.getElementById('theme-toggle');
     const themeIcon = document.getElementById('theme-icon');
+    const sleepTimerButton = document.getElementById('sleep-timer-button');
+    const sleepTimerOptions = document.getElementById('sleep-timer-options');
+    const sleepTimerText = document.getElementById('sleep-timer-text');
+    const timerOptions = document.querySelectorAll('.timer-option');
     
     // Player state
     let songs = [];
     let currentSongIndex = 0;
     let isPlaying = false;
+    let sleepTimerId = null;
+    let sleepTimerEndTime = null;
 
     // Fetch songs from the server
     async function loadSongs() {
@@ -253,6 +259,107 @@ document.addEventListener('DOMContentLoaded', function() {
         songTitle.textContent = 'Error playing song';
         isPlaying = false;
         updatePlayButtonIcon();
+    });
+
+    // Sleep Timer Functions
+    function startSleepTimer(minutes) {
+        // Clear any existing timer
+        clearSleepTimer();
+        
+        if (minutes <= 0) {
+            updateSleepTimerDisplay(0);
+            return;
+        }
+        
+        // Set end time
+        const now = new Date();
+        sleepTimerEndTime = new Date(now.getTime() + minutes * 60000);
+        
+        // Update display immediately
+        updateSleepTimerDisplay(minutes);
+        
+        // Add active class to the sleep timer button
+        sleepTimerButton.classList.add('timer-active');
+        
+        // Start a timer to update display and eventually pause playback
+        sleepTimerId = setInterval(() => {
+            // Calculate remaining time
+            const now = new Date();
+            const remainingMs = sleepTimerEndTime - now;
+            
+            if (remainingMs <= 0) {
+                // Time's up - pause playback
+                audioPlayer.pause();
+                isPlaying = false;
+                updatePlayButtonIcon();
+                clearSleepTimer();
+                return;
+            }
+            
+            // Update display with remaining minutes
+            const remainingMinutes = Math.ceil(remainingMs / 60000);
+            updateSleepTimerDisplay(remainingMinutes);
+        }, 1000);
+    }
+    
+    function clearSleepTimer() {
+        if (sleepTimerId) {
+            clearInterval(sleepTimerId);
+            sleepTimerId = null;
+            sleepTimerEndTime = null;
+            sleepTimerButton.classList.remove('timer-active');
+            sleepTimerText.textContent = 'Schlaf-Timer';
+            
+            // Remove active class from all timer options
+            timerOptions.forEach(option => {
+                option.classList.remove('active');
+            });
+        }
+    }
+    
+    function updateSleepTimerDisplay(minutes) {
+        if (minutes <= 0) {
+            sleepTimerText.textContent = 'Schlaf-Timer';
+            return;
+        }
+        
+        sleepTimerText.textContent = `${minutes} Min`;
+    }
+    
+    // Sleep Timer button click handler
+    sleepTimerButton.addEventListener('click', (event) => {
+        // Toggle timer options visibility
+        sleepTimerOptions.classList.toggle('hidden');
+        event.stopPropagation();
+    });
+    
+    // Click anywhere else to hide timer options
+    document.addEventListener('click', (event) => {
+        if (!sleepTimerOptions.contains(event.target) && event.target !== sleepTimerButton) {
+            sleepTimerOptions.classList.add('hidden');
+        }
+    });
+    
+    // Timer option click handlers
+    timerOptions.forEach(option => {
+        option.addEventListener('click', () => {
+            // Get minutes from data attribute
+            const minutes = parseInt(option.getAttribute('data-minutes'), 10);
+            
+            // Remove active class from all options
+            timerOptions.forEach(opt => opt.classList.remove('active'));
+            
+            // Add active class to selected option
+            if (minutes > 0) {
+                option.classList.add('active');
+            }
+            
+            // Start/clear timer
+            startSleepTimer(minutes);
+            
+            // Hide options
+            sleepTimerOptions.classList.add('hidden');
+        });
     });
 
     // Theme Management Functions

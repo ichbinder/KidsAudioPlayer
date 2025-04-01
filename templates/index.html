@@ -52,6 +52,21 @@
                         <div class="progress" id="progress"></div>
                     </div>
                 </div>
+                
+                <!-- Sleep Timer -->
+                <div class="sleep-timer-container">
+                    <button id="sleep-timer-button" class="sleep-timer-button">
+                        <img src="{{ url_for('static', filename='svg/timer.svg') }}" alt="Schlaf-Timer">
+                        <span id="sleep-timer-text">Schlaf-Timer</span>
+                    </button>
+                    <div id="sleep-timer-options" class="sleep-timer-options hidden">
+                        <button class="timer-option" data-minutes="5">5 Min</button>
+                        <button class="timer-option" data-minutes="10">10 Min</button>
+                        <button class="timer-option" data-minutes="15">15 Min</button>
+                        <button class="timer-option" data-minutes="20">20 Min</button>
+                        <button class="timer-option" data-minutes="0">Aus</button>
+                    </div>
+                </div>
             </div>
 
             <!-- Song List -->
