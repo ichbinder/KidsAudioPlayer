@@ -11,14 +11,14 @@ logger = logging.getLogger(__name__)
 app = Flask(__name__)
 app.secret_key = os.environ.get("SESSION_SECRET", "dev_secret_key")
 
-# Define the music directory - default to a 'music' folder in the user's home directory
-MUSIC_DIR = os.environ.get("MUSIC_DIR", os.path.expanduser("~/music"))
+# Define the MP3s directory - default to a 'mp3s' folder in the user's home directory
+MUSIC_DIR = os.environ.get("MUSIC_DIR", os.path.expanduser("~/mp3s"))
 if not os.path.exists(MUSIC_DIR):
     try:
         os.makedirs(MUSIC_DIR)
-        logger.info(f"Created music directory at {MUSIC_DIR}")
+        logger.info(f"Created MP3s directory at {MUSIC_DIR}")
     except Exception as e:
-        logger.error(f"Failed to create music directory: {e}")
+        logger.error(f"Failed to create MP3s directory: {e}")
 
 @app.route('/')
 def index():
