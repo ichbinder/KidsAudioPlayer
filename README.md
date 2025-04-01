@@ -1,59 +1,60 @@
-# Kids MP3 Player mit RFID-Funktionalität
+# Kids MP3 Player with RFID Functionality
 
-Ein kinderfreundlicher MP3-Player mit RFID-Funktionalität, speziell entwickelt für den Raspberry Pi. Diese Anwendung ermöglicht es Kindern, Musik durch einfaches Auflegen und Entfernen von RFID-Karten zu steuern, ohne mit einem Touchscreen oder einer Tastatur interagieren zu müssen.
+A kid-friendly MP3 player with RFID functionality, specifically designed for Raspberry Pi. This application allows children to control music playback by simply placing and removing RFID cards, without needing to interact with a touchscreen or keyboard.
 
 ![Kids MP3 Player Screenshot](generated-icon.png)
 
-## Funktionen
+## Features
 
-- **RFID-Steuerung**: Musik wird automatisch abgespielt, wenn eine RFID-Karte auf den Leser gelegt wird, und stoppt, wenn die Karte entfernt wird
-- **Kinderfreundliche Benutzeroberfläche**: Große Steuerelemente und ein farbenfroher, intuitiver Aufbau
-- **Flexibles Musikmanagement**: Füge MP3-Dateien einfach zum `mp3s`-Ordner hinzu
-- **RFID-Tag-Verwaltung**: Verknüpfe RFID-Karten mit bestimmten Songs über eine einfache Admin-Oberfläche
-- **Dunkelmodus**: Umschaltbare helle und dunkle Farbschemata
-- **Schlaftimer**: Stell einen Timer ein, um die Musik nach einer bestimmten Zeit automatisch zu stoppen
-- **Albumcover-Unterstützung**: Zeigt passende Bilddateien als Albumcover an
+- **RFID Control**: Music automatically plays when an RFID card is placed on the reader and stops when removed
+- **Kid-friendly Interface**: Large controls and a colorful, intuitive layout
+- **Flexible Music Management**: Easily add MP3 files to the `mp3s` folder
+- **RFID Tag Management**: Link RFID cards to specific songs through a simple admin interface
+- **Dark Mode**: Toggleable light and dark color schemes
+- **Sleep Timer**: Set a timer to automatically stop music after a specified time
+- **Album Cover Support**: Displays matching image files as album covers
+- **Colorful Volume Control**: Child-friendly volume slider with vibrant colors
 
-## Hardware-Anforderungen
+## Hardware Requirements
 
-- Raspberry Pi (getestet auf Raspberry Pi A+ mit 512MB RAM)
-- RC522 RFID-Lesegerät
-- MIFARE Classic 1K RFID-Karten/Tags
-- Lautsprecher oder Kopfhörer
-- Stromversorgung für den Raspberry Pi
+- Raspberry Pi (tested on Raspberry Pi A+ with 512MB RAM)
+- RC522 RFID reader
+- MIFARE Classic 1K RFID cards/tags
+- Speakers or headphones
+- Power supply for the Raspberry Pi
 
-## Software-Anforderungen
+## Software Requirements
 
 - Python 3.6+
 - Flask 2.3.3
 - Flask-SQLAlchemy 3.1.1
 - SQLAlchemy 2.0.23
-- MFRC522 Python-Bibliothek 0.0.7
+- MFRC522 Python library 0.0.7
 - RPi.GPIO 0.7.1 
 - gunicorn 23.0.0
 - email-validator 2.1.0
-- psycopg2-binary 2.9.9 (für PostgreSQL-Unterstützung)
+- psycopg2-binary 2.9.9 (for PostgreSQL support)
 
 ## Installation
 
-1. Repository klonen:
+1. Clone the repository:
    ```
    git clone https://github.com/yourusername/kids-rfid-music-player.git
    cd kids-rfid-music-player
    ```
 
-2. Abhängigkeiten installieren:
+2. Install dependencies:
    ```
    pip install -r requirements.txt
    ```
 
-3. Datenbank initialisieren:
+3. Initialize the database:
    ```
-   # Die Datenbank wird automatisch erstellt, wenn die Anwendung zum ersten Mal gestartet wird
+   # The database is automatically created when the application is started for the first time
    ```
 
-4. RFID-Reader anschließen:
-   - Verbinde den RC522 RFID-Reader mit den GPIO-Pins des Raspberry Pi gemäß folgendem Schema:
+4. Connect the RFID reader:
+   - Connect the RC522 RFID reader to the Raspberry Pi GPIO pins according to the following pinout:
      - SDA → Pin 24
      - SCK → Pin 23
      - MOSI → Pin 19
@@ -62,99 +63,99 @@ Ein kinderfreundlicher MP3-Player mit RFID-Funktionalität, speziell entwickelt 
      - RST → Pin 22
      - 3.3V → 3.3V
 
-5. MP3-Dateien hinzufügen:
-   - Lege deine MP3-Dateien im Ordner `mp3s` ab
-   - Für Albumcover lege Bilddateien mit demselben Namen wie die MP3 im gleichen Ordner ab (unterstützt werden .jpg, .jpeg, .png, .gif, .bmp, .webp)
+5. Add MP3 files:
+   - Place your MP3 files in the `mp3s` folder
+   - For album covers, place image files with the same name as the MP3 in the same folder (supported formats: .jpg, .jpeg, .png, .gif, .bmp, .webp)
 
-## Starten der Anwendung
+## Starting the Application
 
 ```
 python main.py
 ```
 
-Die Anwendung ist dann über einen Webbrowser unter `http://[raspberry-pi-ip]:5000` erreichbar.
+The application is then accessible via a web browser at `http://[raspberry-pi-ip]:5000`.
 
-## RFID-Tags konfigurieren
+## Configuring RFID Tags
 
-1. Navigiere zur RFID-Verwaltungsseite über den Zahnrad-Button in der rechten oberen Ecke der Hauptseite
-2. Klicke auf "RFID-Tag scannen" und halte eine RFID-Karte an den Leser
-3. Gib einen benutzerfreundlichen Namen für die Karte ein (optional)
-4. Wähle einen Song aus der Dropdown-Liste aus
-5. Klicke auf "Registrieren"
+1. Navigate to the RFID management page via the gear button in the top right corner of the main page
+2. Click on "Scan RFID Tag" and hold an RFID card to the reader
+3. Enter a user-friendly name for the card (optional)
+4. Select a song from the dropdown list
+5. Click "Register"
 
-## Projektstruktur
+## Project Structure
 
 ```
 kids-rfid-music-player/
-├── app.py                 # Flask App-Konfiguration
-├── main.py                # Haupteinstiegspunkt
-├── db.py                  # Datenbankinitialisierung
-├── models.py              # Datenbankmodelle
+├── app.py                 # Flask app configuration
+├── main.py                # Main entry point
+├── db.py                  # Database initialization
+├── models.py              # Database models
 ├── controllers/
-│   └── rfid_controller.py # RFID-Tag-Verwaltungslogik
+│   └── rfid_controller.py # RFID tag management logic
 ├── routes/
-│   ├── api_routes.py      # API-Endpunkte
-│   └── rfid_routes.py     # RFID-Verwaltungsrouten
+│   ├── api_routes.py      # API endpoints
+│   └── rfid_routes.py     # RFID management routes
 ├── static/
 │   ├── css/               # Stylesheets
-│   ├── js/                # JavaScript-Dateien
-│   └── svg/               # SVG-Icons
+│   ├── js/                # JavaScript files
+│   └── svg/               # SVG icons
 ├── templates/
-│   ├── index.html         # Hauptspieler-Oberfläche
-│   └── rfid_management.html # RFID-Verwaltungsseite
+│   ├── index.html         # Main player interface
+│   └── rfid_management.html # RFID management page
 ├── utils/
-│   ├── file_handler.py    # Dateiverwaltungsfunktionen
-│   ├── rfid_handler.py    # RFID-Hardware-Schnittstelle
-│   └── rfid_player.py     # RFID-Player-Integration
-└── mp3s/                  # Musikdateien
+│   ├── file_handler.py    # File management functions
+│   ├── rfid_handler.py    # RFID hardware interface
+│   └── rfid_player.py     # RFID player integration
+└── mp3s/                  # Music files
 ```
 
-## Wie es funktioniert
+## How It Works
 
-1. Der RFID-Handler überwacht kontinuierlich den RC522 RFID-Reader
-2. Wenn eine Karte erkannt wird, wird die zugehörige Tag-ID gelesen
-3. Der RFID-Controller sucht in der Datenbank nach der Tag-ID
-4. Wenn ein Eintrag gefunden wird, wird der verknüpfte Song abgespielt
-5. Wenn die Karte entfernt wird, wird die Wiedergabe gestoppt
+1. The RFID handler continuously monitors the RC522 RFID reader
+2. When a card is detected, the associated tag ID is read
+3. The RFID controller searches for the tag ID in the database
+4. If an entry is found, the linked song is played
+5. When the card is removed, playback stops
 
-Im Simulationsmodus (wenn kein RFID-Reader angeschlossen ist) wird ein virtueller RFID-Tag mit der ID "12345678" simuliert.
+In simulation mode (when no RFID reader is connected), a virtual RFID tag with ID "12345678" is simulated.
 
-## Problembehebung
+## Troubleshooting
 
-### RFID-Reader wird nicht erkannt
-- Überprüfe die Verkabelung des RC522-Readers
-- Stelle sicher, dass SPI auf deinem Raspberry Pi aktiviert ist:
+### RFID Reader Not Detected
+- Check the wiring of the RC522 reader
+- Make sure SPI is enabled on your Raspberry Pi:
   ```
   sudo raspi-config
   ```
-  Gehe zu "Interface Options" > "SPI" > "Yes"
+  Go to "Interface Options" > "SPI" > "Yes"
 
-### Keine Musik wird abgespielt
-- Überprüfe, ob MP3-Dateien im Ordner `mp3s` vorhanden sind
-- Überprüfe die Audioausgabeeinstellungen deines Raspberry Pi
-- Stelle sicher, dass der RFID-Tag korrekt registriert wurde
+### No Music Playing
+- Check if MP3 files are present in the `mp3s` folder
+- Check the audio output settings of your Raspberry Pi
+- Make sure the RFID tag is correctly registered
 
-### Admin-Oberfläche zeigt keine Songs
-- Starte die Anwendung neu, um die Datenbank zu aktualisieren
-- Überprüfe, ob die MP3-Dateien korrekt im `mp3s`-Ordner platziert sind
+### Admin Interface Shows No Songs
+- Restart the application to update the database
+- Check if the MP3 files are correctly placed in the `mp3s` folder
 
-## Anpassung
+## Customization
 
-### Hinzufügen neuer Musik
-Lege einfach MP3-Dateien im Ordner `mp3s` ab. Die Anwendung erkennt diese automatisch.
+### Adding New Music
+Simply place MP3 files in the `mp3s` folder. The application detects them automatically.
 
-### Ändern des Designs
-Die CSS-Stile befinden sich in `static/css/styles.css`. Ändere Farben, Größen und Layouts nach Bedarf.
+### Changing the Design
+The CSS styles are located in `static/css/styles.css`. Change colors, sizes, and layouts as needed.
 
-### Anpassen der RFID-Simulation
-Im Entwicklungsmodus oder wenn kein RFID-Reader angeschlossen ist, wird ein virtueller RFID-Tag simuliert. Ändere die Simulationslogik in `utils/rfid_handler.py`.
+### Customizing RFID Simulation
+In development mode or when no RFID reader is connected, a virtual RFID tag is simulated. Modify the simulation logic in `utils/rfid_handler.py`.
 
-## Lizenz
+## License
 
-Dieses Projekt steht unter der MIT-Lizenz - siehe die [LICENSE](LICENSE) Datei für Details.
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
 
-## Danksagungen
+## Acknowledgements
 
-- RFID-Bibliothek: [mfrc522](https://github.com/pimylifeup/MFRC522-python)
-- SVG-Icons: [Feather Icons](https://feathericons.com/)
-- Demo-MP3s: [Pixabay](https://pixabay.com/music/)
+- RFID library: [mfrc522](https://github.com/pimylifeup/MFRC522-python)
+- SVG icons: [Feather Icons](https://feathericons.com/)
+- Demo MP3s: [Pixabay](https://pixabay.com/music/)
