@@ -49,12 +49,35 @@
                 </div>
             </div>
 
+            <!-- Playlist Section -->
+            <div class="playlist-section">
+                <div class="playlist-header">
+                    <h2>My Playlists</h2>
+                    <button id="new-playlist-button" class="action-button">+ New Playlist</button>
+                </div>
+                
+                <div id="playlists-container" class="playlists-container">
+                    <div class="loading-message">Loading playlists...</div>
+                </div>
+                
+                <div id="no-playlists-message" class="no-playlists-message" style="display: none;">
+                    <p>No playlists yet! Create your first playlist.</p>
+                </div>
+            </div>
+            
             <!-- Song List -->
             <div class="song-list-container">
-                <h2>My Songs</h2>
+                <div class="song-list-header">
+                    <h2 id="current-playlist-name">All Songs</h2>
+                    <div class="song-list-actions">
+                        <button id="add-to-playlist-button" class="action-button" style="display: none;">+ Add to Playlist</button>
+                    </div>
+                </div>
+                
                 <div id="song-list" class="song-list">
                     <div class="loading-message">Loading songs...</div>
                 </div>
+                
                 <div id="no-songs-message" class="no-songs-message" style="display: none;">
                     <p>No songs found! Put MP3 files in your mp3s folder.</p>
                 </div>
@@ -67,6 +90,54 @@
 
         <!-- Hidden audio element -->
         <audio id="audio-player"></audio>
+        
+        <!-- Modal for creating/editing playlists -->
+        <div id="playlist-modal" class="modal" style="display: none;">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h2 id="modal-title">Create New Playlist</h2>
+                    <span class="close-modal">&times;</span>
+                </div>
+                <div class="modal-body">
+                    <form id="playlist-form">
+                        <div class="form-group">
+                            <label for="playlist-name">Playlist Name:</label>
+                            <input type="text" id="playlist-name" name="playlist-name" required>
+                        </div>
+                        <div class="form-actions">
+                            <button type="submit" class="action-button">Save Playlist</button>
+                            <button type="button" class="action-button cancel">Cancel</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Modal for adding songs to playlist -->
+        <div id="add-songs-modal" class="modal" style="display: none;">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h2>Add Songs to Playlist</h2>
+                    <span class="close-modal">&times;</span>
+                </div>
+                <div class="modal-body">
+                    <div class="form-group">
+                        <label for="playlist-select">Select Playlist:</label>
+                        <select id="playlist-select" name="playlist-select" required>
+                            <!-- Playlists will be populated here -->
+                        </select>
+                    </div>
+                    <div id="available-songs" class="available-songs">
+                        <!-- Available songs will be displayed here -->
+                        <div class="loading-message">Loading songs...</div>
+                    </div>
+                    <div class="form-actions">
+                        <button type="button" id="add-songs-button" class="action-button">Add Selected Songs</button>
+                        <button type="button" class="action-button cancel">Cancel</button>
+                    </div>
+                </div>
+            </div>
+        </div>
     </div>
 
     <script src="{{ url_for('static', filename='js/player.js') }}"></script>

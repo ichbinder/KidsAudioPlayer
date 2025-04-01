@@ -37,8 +37,8 @@ with app.app_context():
     db.create_all()
     logger.info("Database tables created")
 
-# Define the MP3s directory - default to a 'mp3s' folder in the user's home directory
-MUSIC_DIR = os.environ.get("MUSIC_DIR", os.path.expanduser("~/mp3s"))
+# Define the MP3s directory - use the 'mp3s' folder in the project directory
+MUSIC_DIR = os.environ.get("MUSIC_DIR", os.path.join(os.getcwd(), "mp3s"))
 if not os.path.exists(MUSIC_DIR):
     try:
         os.makedirs(MUSIC_DIR)
@@ -70,6 +70,132 @@ def play_song(filename):
     except Exception as e:
         logger.error(f"Error playing song {filename}: {e}")
         return jsonify({"error": str(e)}), 404
+
+# Playlist Routes
+@app.route('/api/playlists', methods=['GET'])
+def get_playlists():
+    """Get all playlists."""
+    try:
+        playlists = models.Playlist.query.all()
+        return jsonify([playlist.to_dict() for playlist in playlists])
+    except Exception as e:
+        logger.error(f"Error getting playlists: {e}")
+        return jsonify({"error": str(e)}), 500
+
+@app.route('/api/playlists', methods=['POST'])
+def create_playlist():
+    """Create a new playlist."""
+    try:
+        data = request.json
+        if not data or 'name' not in data:
+            return jsonify({"error": "Name is required"}), 400
+        
+        playlist = models.Playlist(name=data['name'])
+        db.session.add(playlist)
+        db.session.commit()
+        return jsonify(playlist.to_dict()), 201
+    except Exception as e:
+        db.session.rollback()
+        logger.error(f"Error creating playlist: {e}")
+        return jsonify({"error": str(e)}), 500
+
+@app.route('/api/playlists/<int:playlist_id>', methods=['GET'])
+def get_playlist(playlist_id):
+    """Get a specific playlist."""
+    try:
+        playlist = models.Playlist.query.get(playlist_id)
+        if not playlist:
+            return jsonify({"error": "Playlist not found"}), 404
+        return jsonify(playlist.to_dict())
+    except Exception as e:
+        logger.error(f"Error getting playlist {playlist_id}: {e}")
+        return jsonify({"error": str(e)}), 500
+
+@app.route('/api/playlists/<int:playlist_id>/songs', methods=['POST'])
+def add_song_to_playlist(playlist_id):
+    """Add a song to a playlist."""
+    try:
+        playlist = models.Playlist.query.get(playlist_id)
+        if not playlist:
+            return jsonify({"error": "Playlist not found"}), 404
+        
+        data = request.json
+        if not data or 'title' not in data or 'filename' not in data:
+            return jsonify({"error": "Title and filename are required"}), 400
+        
+        # Get highest order value for songs in this playlist
+        max_order = db.session.query(db.func.max(models.Song.order)).filter_by(playlist_id=playlist_id).scalar() or 0
+        
+        song = models.Song(
+            title=data['title'],
+            filename=data['filename'],
+            order=max_order + 1,
+            playlist_id=playlist_id
+        )
+        db.session.add(song)
+        db.session.commit()
+        return jsonify(song.to_dict()), 201
+    except Exception as e:
+        db.session.rollback()
+        logger.error(f"Error adding song to playlist {playlist_id}: {e}")
+        return jsonify({"error": str(e)}), 500
+
+@app.route('/api/playlists/<int:playlist_id>/songs/<int:song_id>', methods=['DELETE'])
+def remove_song_from_playlist(playlist_id, song_id):
+    """Remove a song from a playlist."""
+    try:
+        song = models.Song.query.filter_by(id=song_id, playlist_id=playlist_id).first()
+        if not song:
+            return jsonify({"error": "Song not found in this playlist"}), 404
+        
+        # Remember the song's order
+        removed_order = song.order
+        
+        # Delete the song
+        db.session.delete(song)
+        
+        # Reorder remaining songs to maintain sequence
+        for s in models.Song.query.filter(
+            models.Song.playlist_id == playlist_id,
+            models.Song.order > removed_order
+        ).all():
+            s.order -= 1
+        
+        db.session.commit()
+        return jsonify({"message": "Song removed from playlist"}), 200
+    except Exception as e:
+        db.session.rollback()
+        logger.error(f"Error removing song {song_id} from playlist {playlist_id}: {e}")
+        return jsonify({"error": str(e)}), 500
+
+@app.route('/api/playlists/<int:playlist_id>/songs/reorder', methods=['PUT'])
+def reorder_songs(playlist_id):
+    """Reorder songs in a playlist."""
+    try:
+        playlist = models.Playlist.query.get(playlist_id)
+        if not playlist:
+            return jsonify({"error": "Playlist not found"}), 404
+        
+        data = request.json
+        if not data or 'songs' not in data or not isinstance(data['songs'], list):
+            return jsonify({"error": "Song order list is required"}), 400
+        
+        # Expected format: {"songs": [{"id": 1, "order": 3}, {"id": 2, "order": 1}, ...]}
+        song_dict = {song.id: song for song in playlist.songs}
+        
+        # Update song orders
+        for song_data in data['songs']:
+            if 'id' in song_data and 'order' in song_data:
+                song_id = song_data['id']
+                if song_id in song_dict:
+                    song_dict[song_id].order = song_data['order']
+        
+        db.session.commit()
+        return jsonify(playlist.to_dict()), 200
+    except Exception as e:
+        db.session.rollback()
+        logger.error(f"Error reordering songs in playlist {playlist_id}: {e}")
+        return jsonify({"error": str(e)}), 500
 
 # Error handlers
 @app.errorhandler(404)
