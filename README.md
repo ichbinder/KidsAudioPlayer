@@ -40,13 +40,25 @@ A kid-friendly MP3 player with RFID functionality, specifically designed for Ras
 
 1. Clone the repository:
    ```
-   git clone https://github.com/yourusername/kids-rfid-music-player.git
-   cd kids-rfid-music-player
+   git clone git@github.com:ichbinder/KidsAudioPlayer.git
+   cd KidsAudioPlayer
    ```
 
 2. Install dependencies:
    ```
-   pip install -r requirements.txt
+   pip install flask==2.3.3 flask-sqlalchemy==3.1.1 sqlalchemy==2.0.23 gunicorn==23.0.0 email-validator==2.1.0 mfrc522==0.0.7 rpi-gpio==0.7.1 psycopg2-binary==2.9.9
+   ```
+   
+   Alternativ kannst du eine requirements.txt-Datei mit folgendem Inhalt erstellen und dann `pip install -r requirements.txt` ausführen:
+   ```
+   flask==2.3.3
+   flask-sqlalchemy==3.1.1
+   sqlalchemy==2.0.23
+   gunicorn==23.0.0
+   email-validator==2.1.0
+   mfrc522==0.0.7
+   rpi-gpio==0.7.1
+   psycopg2-binary==2.9.9
    ```
 
 3. Initialize the database:
@@ -87,7 +99,7 @@ The application is then accessible via a web browser at `http://[raspberry-pi-ip
 ## Project Structure
 
 ```
-kids-rfid-music-player/
+KidsAudioPlayer/
 ├── app.py                 # Flask app configuration
 ├── main.py                # Main entry point
 ├── db.py                  # Database initialization
