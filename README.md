@@ -26,7 +26,7 @@ A kid-friendly MP3 player with RFID functionality, specifically designed for Ras
 
 ## Software Requirements
 
-- Python 3.6+
+- Python 3.8+ (due to Flask 2.3+ requirements)
 - Flask 2.3.3+
 - Flask-SQLAlchemy 3.1.1+
 - SQLAlchemy 2.0.23+
