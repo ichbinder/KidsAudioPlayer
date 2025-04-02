@@ -49,7 +49,7 @@ A kid-friendly MP3 player with RFID functionality, specifically designed for Ras
    pip install flask==2.3.3 flask-sqlalchemy==3.1.1 sqlalchemy==2.0.23 gunicorn==23.0.0 email-validator==2.1.0 mfrc522==0.0.7 rpi-gpio==0.7.1 psycopg2-binary==2.9.9
    ```
    
-   Alternativ kannst du eine requirements.txt-Datei mit folgendem Inhalt erstellen und dann `pip install -r requirements.txt` ausführen:
+   Alternatively, you can create a requirements.txt file with the following content and then run `pip install -r requirements.txt`:
    ```
    flask==2.3.3
    flask-sqlalchemy==3.1.1
