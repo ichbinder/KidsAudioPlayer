@@ -27,14 +27,13 @@ A kid-friendly MP3 player with RFID functionality, specifically designed for Ras
 ## Software Requirements
 
 - Python 3.6+
-- Flask 2.3.3
-- Flask-SQLAlchemy 3.1.1
-- SQLAlchemy 2.0.23
-- MFRC522 Python library 0.0.7
-- RPi.GPIO 0.7.1 
-- gunicorn 23.0.0
-- email-validator 2.1.0
-- psycopg2-binary 2.9.9 (for PostgreSQL support)
+- Flask 2.3.3+
+- Flask-SQLAlchemy 3.1.1+
+- SQLAlchemy 2.0.23+
+- MFRC522 Python library 0.0.7+
+- RPi.GPIO 0.7.1+ 
+- gunicorn 23.0.0+
+- psycopg2-binary 2.9.9+ (optional, for PostgreSQL support)
 
 ## Installation
 
@@ -46,19 +45,18 @@ A kid-friendly MP3 player with RFID functionality, specifically designed for Ras
 
 2. Install dependencies:
    ```
-   pip install flask==2.3.3 flask-sqlalchemy==3.1.1 sqlalchemy==2.0.23 gunicorn==23.0.0 email-validator==2.1.0 mfrc522==0.0.7 rpi-gpio==0.7.1 psycopg2-binary==2.9.9
+   pip install flask flask-sqlalchemy sqlalchemy gunicorn mfrc522 rpi-gpio psycopg2-binary
    ```
    
    Alternatively, you can create a requirements.txt file with the following content and then run `pip install -r requirements.txt`:
    ```
-   flask==2.3.3
-   flask-sqlalchemy==3.1.1
-   sqlalchemy==2.0.23
-   gunicorn==23.0.0
-   email-validator==2.1.0
-   mfrc522==0.0.7
-   rpi-gpio==0.7.1
-   psycopg2-binary==2.9.9
+   flask>=2.3.3
+   flask-sqlalchemy>=3.1.1
+   sqlalchemy>=2.0.23
+   gunicorn>=23.0.0
+   mfrc522>=0.0.7
+   rpi-gpio>=0.7.1
+   psycopg2-binary>=2.9.9
    ```
 
 3. Initialize the database:
