@@ -210,10 +210,16 @@
         <div class="card">
             <h2>Neuen RFID-Tag registrieren</h2>
             
+            <div class="form-group">
+                <button type="button" id="scan-button" class="button secondary">RFID-Tag scannen</button>
+                <div id="scan-status" class="scan-status" style="display: none;"></div>
+            </div>
+
             <form id="register-form" action="{{ url_for('rfid.register_tag') }}" method="POST">
                 <div class="form-group">
                     <label for="tag_id">RFID-Tag ID:</label>
-                    <input type="text" id="tag_id" name="tag_id" required>
+                    <input type="text" id="tag_id" name="tag_id" required readonly>
+                    <small>Zum Scannen eines Tags, klicke auf "RFID-Tag scannen" und halte dann einen Tag an den Leser.</small>
                 </div>
                 
                 <div class="form-group">
@@ -231,11 +237,8 @@
                     </select>
                 </div>
                 
-                <button type="submit" class="button">Registrieren</button>
-                <button type="button" id="scan-button" class="button secondary">RFID-Tag scannen</button>
+                <button type="submit" class="button" id="register-button" disabled>Registrieren</button>
             </form>
-            
-            <div id="scan-status" class="scan-status" style="display: none;"></div>
         </div>
         
         <div class="card">
@@ -282,12 +285,17 @@
             let scanning = false;
             let scanInterval;
             
+            const registerButton = document.getElementById('register-button');
+            
             // Function to scan for RFID tags
             function scanForTag() {
                 // Show scanning status
                 scanStatus.innerHTML = '<span class="loading-indicator"></span> Scanne nach RFID-Tag...';
                 scanStatus.className = 'scan-status scanning';
                 scanStatus.style.display = 'block';
+                
+                // Disable register button while scanning
+                registerButton.disabled = true;
                 
                 fetch('/rfid/scan')
                     .then(response => response.json())
@@ -307,13 +315,18 @@
                             // Fill in the tag ID
                             tagIdInput.value = data.tag_id;
                             
+                            // Enable register button
+                            registerButton.disabled = false;
+                            
                             // Update status
                             if (data.registered) {
-                                scanStatus.innerHTML = `RFID-Tag erkannt: ${data.tag_id}<br>
-                                                      Bereits registriert für Song: ${data.song.title}`;
+                                scanStatus.innerHTML = `RFID-Tag erkannt: <strong>${data.tag_id}</strong><br>
+                                                      Bereits registriert für Song: ${data.song.title}<br>
+                                                      <em>Du kannst den Tag mit einem anderen Song neu verknüpfen.</em>`;
                             } else {
-                                scanStatus.innerHTML = `RFID-Tag erkannt: ${data.tag_id}<br>
-                                                      Tag ist noch nicht registriert.`;
+                                scanStatus.innerHTML = `RFID-Tag erkannt: <strong>${data.tag_id}</strong><br>
+                                                      Tag ist noch nicht registriert.<br>
+                                                      <em>Wähle einen Song aus und klicke auf "Registrieren".</em>`;
                             }
                             scanStatus.className = 'scan-status detected';
                         }
