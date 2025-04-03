@@ -88,6 +88,7 @@ class RFIDHandler:
             
         last_tag_id = None
         tag_missing_count = 0
+        check_interval = 0.1  # Check more frequently for better responsiveness
         
         while self.running:
             try:
@@ -98,21 +99,35 @@ class RFIDHandler:
                     # Convert tag_id to string for consistency
                     tag_id = str(tag_id)
                     
-                    # New tag detected
+                    # New tag detected or same tag still present
                     if last_tag_id != tag_id:
+                        # It's a new tag
+                        logger.debug(f"New RFID tag detected: {tag_id}")
+                        
+                        # If we had a previous tag, send 'absent' for it first
+                        if last_tag_id and self.callback:
+                            self.callback(last_tag_id, 'absent')
+                            logger.info(f"Previous RFID tag removed: {last_tag_id}")
+                        
+                        # Now handle the new tag
                         last_tag_id = tag_id
                         tag_missing_count = 0
                         self.current_tag = tag_id
                         if self.callback:
                             self.callback(tag_id, 'present')
                         logger.info(f"RFID tag detected: {tag_id}")
+                    else:
+                        # Same tag still present, reset missing count
+                        tag_missing_count = 0
+                        logger.debug(f"RFID tag still present: {tag_id}")
                 else:
                     # No tag detected
                     tag_missing_count += 1
+                    logger.debug(f"No tag detected, missing count: {tag_missing_count}")
                     
                     # Only consider the tag missing after several consecutive failed reads
-                    # This helps with brief read errors
-                    if tag_missing_count > 3 and last_tag_id:
+                    # This helps with brief read errors - but don't wait too long
+                    if tag_missing_count >= 2 and last_tag_id:  # Reduced from 3 to 2 for faster response
                         if self.callback:
                             self.callback(last_tag_id, 'absent')
                         logger.info(f"RFID tag removed: {last_tag_id}")
@@ -120,12 +135,12 @@ class RFIDHandler:
                         self.current_tag = None
                         tag_missing_count = 0
                 
-                # Sleep to prevent 100% CPU usage
-                time.sleep(0.2)
+                # Sleep to prevent 100% CPU usage - but check more frequently
+                time.sleep(check_interval)
                 
             except Exception as e:
                 logger.error(f"Error in RFID detection loop: {e}")
-                time.sleep(1)  # Wait a bit longer on errors
+                time.sleep(0.5)  # Wait a bit on errors, but not too long
     
     def _simulation_loop(self):
         """
@@ -134,42 +149,42 @@ class RFIDHandler:
         """
         logger.info("Starting RFID simulation mode")
         
-        # In simulation mode, we'll just toggle between simulated tags every 10 seconds
-        simulated_tags = ["12345678", "87654321"]
+        # In simulation mode, use multiple simulated tags with faster cycling
+        simulated_tags = ["12345678", "87654321", "11223344", "55667788", "99001122"]
         current_index = 0
+        tag_present = False
+        tag_detected_time = 0
+        check_interval = 0.1  # Check much more frequently
         
         while self.running:
-            # Simulate tag detection
-            tag_id = simulated_tags[current_index]
-            self.current_tag = tag_id
+            current_time = time.time()
             
-            if self.callback:
-                self.callback(tag_id, 'present')
-            logger.info(f"[SIMULATION] RFID tag detected: {tag_id}")
-            
-            # Wait for 10 seconds
-            for _ in range(50):  # 10 seconds in 0.2s increments
-                if not self.running:
-                    break
-                time.sleep(0.2)
-            
-            if not self.running:
-                break
+            # Toggle tag presence every 2-4 seconds
+            if not tag_present and current_time - tag_detected_time > 2:
+                # Simulate new tag detection
+                current_index = (current_index + 1) % len(simulated_tags)
+                tag_id = simulated_tags[current_index]
+                self.current_tag = tag_id
                 
-            # Simulate tag removal
-            if self.callback:
-                self.callback(tag_id, 'absent')
-            logger.info(f"[SIMULATION] RFID tag removed: {tag_id}")
-            self.current_tag = None
+                if self.callback:
+                    self.callback(tag_id, 'present')
+                logger.info(f"[SIMULATION] RFID tag detected: {tag_id}")
+                tag_present = True
+                tag_detected_time = current_time
+                
+            elif tag_present and current_time - tag_detected_time > 4:
+                # Simulate tag removal
+                tag_id = simulated_tags[current_index]
+                if self.callback:
+                    self.callback(tag_id, 'absent')
+                logger.info(f"[SIMULATION] RFID tag removed: {tag_id}")
+                self.current_tag = None
+                tag_present = False
+                tag_detected_time = current_time
             
-            # Switch to the next tag
-            current_index = (current_index + 1) % len(simulated_tags)
-            
-            # Wait for 5 seconds before the next tag
-            for _ in range(25):  # 5 seconds in 0.2s increments
-                if not self.running:
-                    break
-                time.sleep(0.2)
+            # Sleep for a short interval to prevent 100% CPU usage
+            # but still be very responsive to changes
+            time.sleep(check_interval)
     
     def get_current_tag(self):
         """Get the currently detected tag ID"""
