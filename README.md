@@ -75,9 +75,40 @@ A kid-friendly MP3 player with RFID functionality, specifically designed for Ras
    
    You may see a deprecation warning about rpi-gpio being installed using the legacy 'setup.py install' method. This is just a warning and can be safely ignored; the installation will still complete successfully.
 
-4. Initialize the database:
+4. Configure the database:
+
+   By default, the application uses SQLite, which works without additional configuration. The database file will be automatically created when the application starts for the first time.
+   
+   To use PostgreSQL (optional):
    ```
-   # The database is automatically created when the application is started for the first time
+   # Install PostgreSQL if not already installed
+   sudo apt install postgresql
+   
+   # Start PostgreSQL service
+   sudo systemctl start postgresql
+   sudo systemctl enable postgresql
+   
+   # Create a database and user
+   sudo -u postgres psql
+   postgres=# CREATE DATABASE kids_audio_player;
+   postgres=# CREATE USER myuser WITH PASSWORD 'mypassword';
+   postgres=# GRANT ALL PRIVILEGES ON DATABASE kids_audio_player TO myuser;
+   postgres=# \q
+   
+   # Set the DATABASE_URL environment variable
+   export DATABASE_URL="postgresql://myuser:mypassword@localhost/kids_audio_player"
+   ```
+   
+   For persistent configuration, add the export command to your ~/.bashrc file:
+   ```
+   echo 'export DATABASE_URL="postgresql://myuser:mypassword@localhost/kids_audio_player"' >> ~/.bashrc
+   source ~/.bashrc
+   ```
+   
+   If using a virtual environment, you can add it to the activate script:
+   ```
+   echo 'export DATABASE_URL="postgresql://myuser:mypassword@localhost/kids_audio_player"' >> venv/bin/activate
+   source venv/bin/activate
    ```
 
 5. Connect the RFID reader:
@@ -178,6 +209,18 @@ In simulation mode (when no RFID reader is connected), a virtual RFID tag with I
 ### Admin Interface Shows No Songs
 - Restart the application to update the database
 - Check if the MP3 files are correctly placed in the `mp3s` folder
+
+### Database Connection Error
+- Check if the DATABASE_URL environment variable is set correctly
+- For PostgreSQL, ensure the PostgreSQL service is running:
+  ```
+  sudo systemctl status postgresql
+  ```
+- Verify database credentials and permissions:
+  ```
+  sudo -u postgres psql -c "SELECT current_database(), current_user;"
+  ```
+- If you see "DATABASE_URL not found in environment" warning but application is working, this is normal - it's falling back to SQLite
 
 ## Customization
 
