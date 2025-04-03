@@ -72,6 +72,8 @@ A kid-friendly MP3 player with RFID functionality, specifically designed for Ras
    ```
    
    **Note:** If you get an "externally-managed-environment" error, this is due to PEP 668 protections in newer Debian/Raspberry Pi OS. You must use a virtual environment as shown above.
+   
+   You may see a deprecation warning about rpi-gpio being installed using the legacy 'setup.py install' method. This is just a warning and can be safely ignored; the installation will still complete successfully.
 
 4. Initialize the database:
    ```
