@@ -43,7 +43,19 @@ A kid-friendly MP3 player with RFID functionality, specifically designed for Ras
    cd KidsAudioPlayer
    ```
 
-2. Install dependencies:
+2. Set up a virtual environment (recommended for Raspberry Pi OS):
+   ```
+   # First ensure you have python3-venv installed
+   sudo apt install python3-full python3-venv
+   
+   # Create virtual environment
+   python3 -m venv venv
+   
+   # Activate the virtual environment
+   source venv/bin/activate
+   ```
+
+3. Install dependencies (within the virtual environment):
    ```
    pip install flask flask-sqlalchemy sqlalchemy gunicorn mfrc522 rpi-gpio psycopg2-binary
    ```
@@ -58,13 +70,15 @@ A kid-friendly MP3 player with RFID functionality, specifically designed for Ras
    rpi-gpio>=0.7.1
    psycopg2-binary>=2.9.9
    ```
+   
+   **Note:** If you get an "externally-managed-environment" error, this is due to PEP 668 protections in newer Debian/Raspberry Pi OS. You must use a virtual environment as shown above.
 
-3. Initialize the database:
+4. Initialize the database:
    ```
    # The database is automatically created when the application is started for the first time
    ```
 
-4. Connect the RFID reader:
+5. Connect the RFID reader:
    - Connect the RC522 RFID reader to the Raspberry Pi GPIO pins according to the following pinout:
      - SDA → Pin 24
      - SCK → Pin 23
@@ -74,14 +88,25 @@ A kid-friendly MP3 player with RFID functionality, specifically designed for Ras
      - RST → Pin 22
      - 3.3V → 3.3V
 
-5. Add MP3 files:
+6. Add MP3 files:
    - Place your MP3 files in the `mp3s` folder
    - For album covers, place image files with the same name as the MP3 in the same folder (supported formats: .jpg, .jpeg, .png, .gif, .bmp, .webp)
 
 ## Starting the Application
 
+If you're using a virtual environment, make sure it's activated:
+```
+source venv/bin/activate
+```
+
+Then start the application:
 ```
 python main.py
+```
+
+For production deployment, you can use gunicorn:
+```
+gunicorn --bind 0.0.0.0:5000 main:app
 ```
 
 The application is then accessible via a web browser at `http://[raspberry-pi-ip]:5000`.
