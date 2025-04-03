@@ -156,3 +156,50 @@ def scan_tag():
             "filename": tag.song.filename
         }
     })
+
+@rfid_bp.route('/simulate', methods=['POST'])
+def simulate_tag():
+    """Simulate an RFID tag for testing (only works in simulation mode)"""
+    import os
+    
+    tag_id = request.form.get('tag_id')
+    action = request.form.get('action', 'present')  # Default action is to simulate tag present
+    
+    if not tag_id and action == 'present':
+        logger.error("Tag ID is required for simulation")
+        if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+            return jsonify({"error": "Tag ID is required"}), 400
+        flash('Tag-ID ist erforderlich für die Simulation', 'error')
+        return redirect(url_for('rfid.rfid_management'))
+    
+    # For simulation, write to a temporary file to trigger the tag detection
+    simulation_file = '/tmp/rfid_simulation.txt'
+    
+    try:
+        if action == 'present':
+            # Simulate tag present
+            with open(simulation_file, 'w') as f:
+                f.write(tag_id)
+            logger.info(f"Simulating RFID tag present: {tag_id}")
+            message = f"Tag {tag_id} simuliert"
+        else:
+            # Simulate tag absent
+            with open(simulation_file, 'w') as f:
+                f.write('No tag')
+            logger.info("Simulating RFID tag absent")
+            message = "Tag-Entfernung simuliert"
+        
+        # For AJAX requests, return JSON
+        if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+            return jsonify({"success": True, "message": message})
+            
+        # For form submissions, redirect back to management page
+        flash(message, 'success')
+        return redirect(url_for('rfid.rfid_management'))
+        
+    except Exception as e:
+        logger.error(f"Error simulating RFID tag: {e}")
+        if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+            return jsonify({"error": f"Fehler bei der Simulation: {e}"}), 500
+        flash(f'Fehler bei der Simulation: {e}', 'error')
+        return redirect(url_for('rfid.rfid_management'))

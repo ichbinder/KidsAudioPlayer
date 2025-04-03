@@ -241,6 +241,40 @@
             </form>
         </div>
         
+        <!-- RFID-Tag Simulation für Testzwecke -->
+        <div class="card">
+            <h2>RFID-Tag Simulation</h2>
+            <p>Mit dieser Funktion können Sie verschiedene RFID-Tags simulieren, um die Funktionalität zu testen, auch ohne physischen RFID-Reader.</p>
+            
+            <form id="simulate-form" action="{{ url_for('rfid.simulate_tag') }}" method="POST">
+                <div class="form-group">
+                    <label for="simulate_tag_id">RFID-Tag ID:</label>
+                    <input type="text" id="simulate_tag_id" name="tag_id" required placeholder="z.B. 12345678">
+                </div>
+                
+                <div class="form-group">
+                    <label>Aktion:</label>
+                    <div style="display: flex; gap: 10px;">
+                        <button type="submit" name="action" value="present" class="button secondary">Tag simulieren</button>
+                        <button type="submit" name="action" value="absent" class="button">Tag entfernen</button>
+                    </div>
+                </div>
+            </form>
+            
+            {% if tags %}
+            <div class="form-group" style="margin-top: 20px;">
+                <label>Registrierte Tags simulieren:</label>
+                <div style="display: flex; flex-wrap: wrap; gap: 10px; margin-top: 10px;">
+                    {% for tag in tags %}
+                    <button type="button" class="button simulate-tag" data-tag-id="{{ tag.tag_id }}">
+                        {{ tag.name or tag.tag_id }} 
+                    </button>
+                    {% endfor %}
+                </div>
+            </div>
+            {% endif %}
+        </div>
+
         <div class="card">
             <h2>Registrierte RFID-Tags</h2>
             
@@ -357,6 +391,96 @@
                     scanInterval = setInterval(scanForTag, 2000);
                 }
             });
+            
+            // RFID Tag Simulation funktionalität
+            // Handler für vordefinierte Simulations-Buttons
+            const simulateTagButtons = document.querySelectorAll('.simulate-tag');
+            simulateTagButtons.forEach(button => {
+                button.addEventListener('click', function() {
+                    const tagId = this.dataset.tagId;
+                    simulateTagPresent(tagId);
+                });
+            });
+            
+            // Funktion zum Simulieren eines RFID-Tags
+            function simulateTagPresent(tagId) {
+                const formData = new FormData();
+                formData.append('tag_id', tagId);
+                formData.append('action', 'present');
+                
+                fetch('/rfid/simulate', {
+                    method: 'POST',
+                    body: formData
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.error) {
+                        alert('Fehler bei der Simulation: ' + data.error);
+                    } else {
+                        console.log('Tag Simulation gestartet: ' + tagId);
+                        // Optional: Eine Erfolgsmeldung anzeigen
+                        const simulationStatus = document.createElement('div');
+                        simulationStatus.className = 'flash-message success';
+                        simulationStatus.innerHTML = `Tag ${tagId} wird jetzt simuliert.`;
+                        document.querySelector('.management-container').prepend(simulationStatus);
+                        
+                        // Die Erfolgsmeldung nach 3 Sekunden ausblenden
+                        setTimeout(() => {
+                            simulationStatus.remove();
+                        }, 3000);
+                    }
+                })
+                .catch(error => {
+                    console.error('Fehler bei der Simulation:', error);
+                    alert('Fehler bei der Simulation: ' + error);
+                });
+            }
+            
+            // Event für manuelles Tag-Simulations-Formular
+            const simulateForm = document.getElementById('simulate-form');
+            if (simulateForm) {
+                const submitButtons = simulateForm.querySelectorAll('button[type="submit"]');
+                submitButtons.forEach(button => {
+                    button.addEventListener('click', function(e) {
+                        e.preventDefault();
+                        
+                        const tagId = document.getElementById('simulate_tag_id').value;
+                        if (!tagId && this.value === 'present') {
+                            alert('Bitte geben Sie eine Tag-ID ein.');
+                            return;
+                        }
+                        
+                        const formData = new FormData();
+                        formData.append('tag_id', tagId);
+                        formData.append('action', this.value);
+                        
+                        fetch('/rfid/simulate', {
+                            method: 'POST',
+                            body: formData
+                        })
+                        .then(response => response.json())
+                        .then(data => {
+                            if (data.error) {
+                                alert('Fehler: ' + data.error);
+                            } else {
+                                console.log('Simulation erfolgreich:', data.message);
+                                const simulationStatus = document.createElement('div');
+                                simulationStatus.className = 'flash-message success';
+                                simulationStatus.innerHTML = data.message;
+                                document.querySelector('.management-container').prepend(simulationStatus);
+                                
+                                setTimeout(() => {
+                                    simulationStatus.remove();
+                                }, 3000);
+                            }
+                        })
+                        .catch(error => {
+                            console.error('Fehler:', error);
+                            alert('Fehler bei der Anfrage: ' + error);
+                        });
+                    });
+                });
+            }
         });
     </script>
 </body>
