@@ -8,7 +8,11 @@ import logging
 import threading
 import time
 from datetime import datetime
-from flask import current_app
+try:
+    from flask import current_app
+except ImportError:
+    # For local development without Flask
+    current_app = None
 
 from utils.rfid_handler import RFIDHandler
 from controllers.rfid_controller import RFIDController
@@ -88,31 +92,51 @@ class RFIDPlayer:
         logger.info(f"RFID event: Tag {tag_id} is {status}")
         
         # We need to wrap DB operations in application context
-        with self.app.app_context():
-            if status == 'present':
-                # Tag placed on reader - start playing associated song
-                song = RFIDController.get_song_by_tag(tag_id)
-                
-                if not song:
-                    logger.warning(f"No song associated with tag {tag_id}")
-                    return
-                
-                # Store current song
-                self.current_song = song
-                
-                # Notify clients to play this song
-                self._notify_clients('play', {
-                    'song_id': song.id,
-                    'filename': song.filename,
-                    'title': song.title
-                })
-                
-                logger.info(f"Playing song: {song.title}")
-                
-            elif status == 'absent':
-                # Tag removed - pause playback
-                self._notify_clients('pause', {})
-                logger.info("Pausing playback")
+        if self.app:
+            with self.app.app_context():
+                self._process_tag_event(tag_id, status)
+        else:
+            # For development without Flask
+            self._process_tag_event(tag_id, status)
+            
+    def _process_tag_event(self, tag_id, status):
+        if status == 'present':
+            # Tag placed on reader - start playing associated song
+            song = RFIDController.get_song_by_tag(tag_id)
+            
+            if not song:
+                logger.warning(f"No song associated with tag {tag_id}")
+                return
+            
+            # Store current song
+            self.current_song = song
+            
+            # Get tag name if possible
+            tag_name = ''
+            try:
+                tag = RFIDController.get_tag(tag_id)
+                if tag and tag.name:
+                    tag_name = tag.name
+            except Exception as e:
+                logger.error(f"Error getting tag name: {e}")
+            
+            # Notify clients to play this song
+            self._notify_clients('play', {
+                'tag_id': tag_id,  # Include the tag_id
+                'name': tag_name,  # Include tag name if available
+                'song_id': song.id,
+                'filename': song.filename,
+                'title': song.title
+            })
+            
+            logger.info(f"Playing song: {song.title}")
+            
+        elif status == 'absent':
+            # Tag removed - pause playback
+            self._notify_clients('pause', {
+                'tag_id': tag_id  # Include tag_id in pause event too
+            })
+            logger.info("Pausing playback")
     
     def register_client_callback(self, callback):
         """

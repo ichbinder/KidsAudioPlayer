@@ -61,6 +61,8 @@ app.register_blueprint(api_bp)
 def rfid_callback(action, data):
     """Callback for RFID player events"""
     if action == 'play':
+        # Log the data we received for debugging
+        logger.debug(f"RFID callback received play event with data: {data}")
         emit_event('tag_present', {
             'tag_id': data.get('tag_id', 'unknown'),
             'name': data.get('name', ''),
@@ -69,6 +71,7 @@ def rfid_callback(action, data):
             'title': data.get('title')
         })
     elif action == 'pause':
+        logger.debug(f"RFID callback received pause event with data: {data}")
         emit_event('tag_absent', {
             'tag_id': data.get('tag_id', 'unknown')
         })
