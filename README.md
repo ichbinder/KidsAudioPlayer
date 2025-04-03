@@ -93,7 +93,10 @@ A kid-friendly MP3 player with RFID functionality, specifically designed for Ras
    postgres=# CREATE DATABASE kids_audio_player;
    postgres=# CREATE USER myuser WITH PASSWORD 'mypassword';
    postgres=# GRANT ALL PRIVILEGES ON DATABASE kids_audio_player TO myuser;
-   postgres=# \q
+   postgres=# \c kids_audio_player
+   kids_audio_player=# GRANT ALL ON SCHEMA public TO myuser;
+   kids_audio_player=# ALTER DATABASE kids_audio_player OWNER TO myuser;
+   kids_audio_player=# \q
    
    # Set the DATABASE_URL environment variable
    export DATABASE_URL="postgresql://myuser:mypassword@localhost/kids_audio_player"
@@ -221,6 +224,14 @@ In simulation mode (when no RFID reader is connected), a virtual RFID tag with I
   sudo -u postgres psql -c "SELECT current_database(), current_user;"
   ```
 - If you see "DATABASE_URL not found in environment" warning but application is working, this is normal - it's falling back to SQLite
+- For "permission denied for schema public" errors, make sure you've granted proper permissions:
+  ```
+  sudo -u postgres psql
+  postgres=# \c kids_audio_player
+  kids_audio_player=# GRANT ALL ON SCHEMA public TO myuser;
+  kids_audio_player=# ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON TABLES TO myuser;
+  kids_audio_player=# \q
+  ```
 
 ## Customization
 
