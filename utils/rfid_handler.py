@@ -10,6 +10,10 @@ import time
 import os
 from datetime import datetime
 from contextlib import contextmanager
+import signal
+import sys
+from mfrc522 import SimpleMFRC522
+import RPi.GPIO as GPIO
 
 # Setup logging
 logger = logging.getLogger(__name__)
@@ -57,17 +61,28 @@ class RFIDHandler:
         self.tag_removal_thread = None
         self.removal_event = threading.Event()
         
-        # Initialize the RFID reader if we're on a Raspberry Pi
-        if RASPBERRY_PI:
-            try:
-                self.reader = SimpleMFRC522()
-                print("[INIT] RFID reader initialized successfully")
-                logger.info("RFID reader initialized")
-            except Exception as e:
-                print(f"[ERROR] Failed to initialize RFID reader: {e}")
-                logger.error(f"Failed to initialize RFID reader: {e}")
-                self.reader = None
-    
+        # Initialize GPIO
+        GPIO.setmode(GPIO.BCM)
+        GPIO.setwarnings(False)  # Disable GPIO warnings
+        
+        # Initialize RFID reader
+        try:
+            self.reader = SimpleMFRC522()
+            logger.info("RFID reader initialized successfully")
+        except Exception as e:
+            logger.error(f"Failed to initialize RFID reader: {e}")
+            raise
+            
+        # Register signal handlers
+        signal.signal(signal.SIGINT, self._signal_handler)
+        signal.signal(signal.SIGTERM, self._signal_handler)
+        
+    def _signal_handler(self, signum, frame):
+        """Handle termination signals"""
+        logger.info(f"Received signal {signum}, cleaning up...")
+        self.stop()
+        sys.exit(0)
+        
     def start(self):
         """Start the RFID detection thread"""
         if self.running:
