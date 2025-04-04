@@ -124,39 +124,46 @@ def unregister_tag(tag_id):
     return redirect(url_for('rfid.rfid_management'))
 
 @rfid_bp.route('/scan', methods=['GET'])
-def scan_tag():
-    """Endpoint to get the currently scanned tag"""
-    from utils.rfid_player import rfid_player
-    
-    if not rfid_player.rfid_handler:
-        return jsonify({"error": "RFID handler not initialized"}), 500
-    
-    tag_id = rfid_player.rfid_handler.get_current_tag()
-    
-    if not tag_id:
-        return jsonify({"detected": False})
-    
-    # Get tag info from database
-    tag = RFIDController.get_tag(tag_id)
-    
-    if not tag:
-        return jsonify({
-            "detected": True,
-            "registered": False,
-            "tag_id": tag_id
-        })
-    
-    return jsonify({
-        "detected": True,
-        "registered": True,
-        "tag_id": tag_id,
-        "name": tag.name,
-        "song": {
-            "id": tag.song.id,
-            "title": tag.song.title,
-            "filename": tag.song.filename
-        }
-    })
+def scan_rfid():
+    """Scan for an RFID tag"""
+    try:
+        # Get the shared RFID handler
+        rfid_handler = get_rfid_handler()
+        
+        if not rfid_handler:
+            logger.error("RFID handler not initialized")
+            return jsonify({"error": "RFID handler not initialized"}), 500
+            
+        # Try to read a tag once
+        tag_id, text = rfid_handler.read_once()
+        
+        if tag_id:
+            # Convert tag_id to string for consistency
+            tag_id = str(tag_id)
+            
+            # Check if tag is already registered
+            existing_tag = RFIDTag.query.filter_by(tag_id=tag_id).first()
+            
+            if existing_tag:
+                return jsonify({
+                    "tag_id": tag_id,
+                    "text": text,
+                    "registered": True,
+                    "name": existing_tag.name,
+                    "song_id": existing_tag.song_id
+                })
+            else:
+                return jsonify({
+                    "tag_id": tag_id,
+                    "text": text,
+                    "registered": False
+                })
+        else:
+            return jsonify({"error": "No tag detected"}), 404
+            
+    except Exception as e:
+        logger.error(f"Error scanning RFID tag: {e}")
+        return jsonify({"error": str(e)}), 500
 
 @rfid_bp.route('/simulate', methods=['POST'])
 def simulate_tag():
@@ -297,45 +304,6 @@ def test_rfid_read():
             "success": False,
             "error": f"Fehler beim Lesen des RFID-Tags: {e}"
         }), 500
-
-@rfid_bp.route('/rfid/scan', methods=['GET'])
-def scan_rfid():
-    """Scan for an RFID tag"""
-    try:
-        # Get the shared RFID handler
-        rfid_handler = get_rfid_handler()
-        
-        if not rfid_handler:
-            logger.error("RFID handler not initialized")
-            return jsonify({"error": "RFID handler not initialized"}), 500
-            
-        # Try to read a tag once
-        tag_id, text = rfid_handler.read_once()
-        
-        if tag_id:
-            # Check if tag is already registered
-            existing_tag = RFIDTag.query.filter_by(tag_id=tag_id).first()
-            
-            if existing_tag:
-                return jsonify({
-                    "tag_id": tag_id,
-                    "text": text,
-                    "registered": True,
-                    "name": existing_tag.name,
-                    "song_id": existing_tag.song_id
-                })
-            else:
-                return jsonify({
-                    "tag_id": tag_id,
-                    "text": text,
-                    "registered": False
-                })
-        else:
-            return jsonify({"error": "No tag detected"}), 404
-            
-    except Exception as e:
-        logger.error(f"Error scanning RFID tag: {e}")
-        return jsonify({"error": str(e)}), 500
 
 @rfid_bp.route('/rfid/register', methods=['POST'])
 def register_rfid():

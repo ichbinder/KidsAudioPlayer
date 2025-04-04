@@ -393,7 +393,7 @@ class RFIDHandler:
         return self.current_tag
 
     def read_once(self):
-        """Read a tag once and return its ID and text"""
+        """Read an RFID tag once and return its ID and text"""
         try:
             if not self.reader:
                 logger.error("RFID reader not initialized")
@@ -403,12 +403,10 @@ class RFIDHandler:
             tag_id, text = self.reader.read()
             
             if tag_id:
-                # Convert tag_id to string for consistency
-                tag_id = str(tag_id)
-                logger.debug(f"Tag read: {tag_id}")
+                logger.debug(f"[DEBUG] RFID: Tag erkannt! ID: {tag_id}, Text: {text}")
                 return tag_id, text
             else:
-                logger.debug("No tag detected")
+                logger.debug("[DEBUG] RFID: Kein Tag erkannt")
                 return None, None
                 
         except Exception as e:
