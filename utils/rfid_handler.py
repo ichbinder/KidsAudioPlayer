@@ -45,43 +45,64 @@ class RFIDHandler:
     """
     Handler for RFID reader operations
     """
-    def __init__(self, callback=None):
-        """
-        Initialize the RFID handler
-
-        Args:
-            callback (callable): Function to call when a tag is detected or removed
-                                 Should accept tag_id and status ('present' or 'absent')
-        """
-        self.callback = callback
+    def __init__(self):
         self.reader = None
-        self.current_tag = None
-        self.running = False
-        self.thread = None
-        self.tag_removal_thread = None
-        self.removal_event = threading.Event()
-        
-        # Register signal handlers for clean shutdown
-        signal.signal(signal.SIGINT, self._signal_handler)
-        signal.signal(signal.SIGTERM, self._signal_handler)
-        
-        # Initialize the RFID reader if we're on a Raspberry Pi
-        if RASPBERRY_PI:
+        self.uid = None
+        self.text = None
+        self.initialized = False
+        self._init_handler()
+
+    def _init_handler(self):
+        """Initialize the RFID reader"""
+        try:
+            self.reader = SimpleMFRC522()
+            self.initialized = True
+            logger.info("RFID reader initialized successfully")
+        except Exception as e:
+            logger.error(f"Failed to initialize RFID reader: {e}")
+            self.initialized = False
+
+    def read_once(self):
+        """Read a tag once and return its ID and text"""
+        if not self.initialized:
+            logger.error("RFID reader not initialized")
+            return None, None
+
+        try:
+            self.uid, self.text = self.reader.read()
+            if self.uid:
+                logger.info(f"Tag detected: {self.uid}")
+                return str(self.uid), self.text
+            return None, None
+        except Exception as e:
+            logger.error(f"Error reading tag: {e}")
+            return None, None
+
+    def write(self, text):
+        """Write text to a tag"""
+        if not self.initialized:
+            logger.error("RFID reader not initialized")
+            return False
+
+        try:
+            self.reader.write(text)
+            logger.info(f"Successfully wrote to tag: {text}")
+            return True
+        except Exception as e:
+            logger.error(f"Error writing to tag: {e}")
+            return False
+
+    def cleanup(self):
+        """Clean up GPIO resources"""
+        if self.initialized:
             try:
-                self.reader = SimpleMFRC522()
-                print("[INIT] RFID reader initialized successfully")
-                logger.info("RFID reader initialized")
+                GPIO.cleanup()
+                logger.info("GPIO cleanup completed")
             except Exception as e:
-                print(f"[ERROR] Failed to initialize RFID reader: {e}")
-                logger.error(f"Failed to initialize RFID reader: {e}")
-                self.reader = None
-            
-    def _signal_handler(self, signum, frame):
-        """Handle termination signals"""
-        print(f"[RFID] Received signal {signum}, cleaning up...")
-        self.stop()
-        sys.exit(0)
-        
+                logger.error(f"Error during GPIO cleanup: {e}")
+            finally:
+                self.initialized = False
+
     def register_callback(self, callback):
         """Register a callback function for tag events"""
         self.callback = callback
@@ -392,37 +413,6 @@ class RFIDHandler:
         """Get the currently detected tag ID"""
         return self.current_tag
 
-    def read_once(self):
-        """Read an RFID tag once and return its ID and text"""
-        try:
-            if not self.reader:
-                logger.error("RFID reader not initialized")
-                return None, None
-                
-            # Try to read a tag
-            try:
-                tag_id, text = self.reader.read()
-            except Exception as e:
-                # Ignore AUTH ERRORs and other read errors
-                # Just try to get the tag ID
-                try:
-                    tag_id = self.reader.read_id()
-                    text = ""
-                except:
-                    logger.debug("[DEBUG] RFID: Kein Tag erkannt")
-                    return None, None
-            
-            if tag_id:
-                logger.debug(f"[DEBUG] RFID: Tag erkannt! ID: {tag_id}, Text: {text}")
-                return tag_id, text
-            else:
-                logger.debug("[DEBUG] RFID: Kein Tag erkannt")
-                return None, None
-                
-        except Exception as e:
-            logger.error(f"Error reading RFID tag: {e}")
-            return None, None
-
     def start_continuous_scan(self):
         """Start continuous scanning for RFID tags"""
         if not self.reader:
@@ -438,6 +428,15 @@ class RFIDHandler:
                 tag_id, text = self.read_once()
                 
                 if tag_id:
+                    logger.info(f"Tag detected: {tag_id}")
+                else:
+                    logger.info("No tag detected")
+                
+                time.sleep(0.1)  # Wait between scans
+            except Exception as e:
+                logger.error(f"Error in continuous RFID scan: {e}")
+                time.sleep(1)  # Wait before retrying
+
 @contextmanager
 def rfid_manager(callback=None):
     """
@@ -447,7 +446,7 @@ def rfid_manager(callback=None):
         with rfid_manager(callback_function) as handler:
             # Do something with handler
     """
-    handler = RFIDHandler(callback)
+    handler = RFIDHandler()
     handler.start()
     try:
         yield handler
