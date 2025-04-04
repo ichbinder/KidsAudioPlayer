@@ -182,56 +182,43 @@ class RFIDHandler:
         print("============================================")
             
         last_tag_id = None
-        tag_missing_count = 0
-        check_interval = 0.05  # Very responsive checking
-        read_counter = 0  # Count read attempts for debug output
+        check_interval = 0.1  # Check every 100ms
         
         while self.running:
             try:
-                # Debug-Ausgabe alle 100 Leseversuche (ca. alle 5 Sekunden)
-                read_counter += 1
-                if read_counter % 100 == 0:
-                    print(f"[DEBUG] RFID: Noch aktiv, warte auf Tags... ({read_counter} Leseversuche)")
-                
-                # Versuche, den Tag zuerst nicht-blockierend zu lesen
+                # Use blocking read like in the test program
                 try:
-                    # Non-blocking read first 
-                    tag_id, text = self.reader.read_no_block()
+                    tag_id, text = self.reader.read()
+                    print(f"[DEBUG] RFID: Tag erkannt! ID: {tag_id}, Text: {text}")
                     
-                    # If we got a tag, great!
-                    if tag_id:
-                        print(f"[DEBUG] RFID: Tag erkannt! ID: {tag_id}, Text: {text}")
-                        # Convert tag_id to string for consistency
-                        tag_id = str(tag_id)
+                    # Convert tag_id to string for consistency
+                    tag_id = str(tag_id)
+                    
+                    # New tag detected or same tag still present
+                    if last_tag_id != tag_id:
+                        # It's a new tag
+                        print(f"[DEBUG] RFID: Neuer Tag erkannt: {tag_id}")
+                        if self.callback:
+                            self.callback(tag_id, 'present')
+                        last_tag_id = tag_id
+                        self.current_tag = tag_id
                         
-                        # New tag detected or same tag still present
-                        if last_tag_id != tag_id:
-                            # It's a new tag
-                            print(f"[DEBUG] RFID: Neuer Tag erkannt: {tag_id}")
-                            if self.callback:
-                                self.callback(tag_id, 'present')
-                            last_tag_id = tag_id
-                            self.current_tag = tag_id
-                    else:
-                        # No tag found with non-blocking read
-                        if last_tag_id:
-                            print(f"[DEBUG] RFID: Tag entfernt: {last_tag_id}")
-                            if self.callback:
-                                self.callback(last_tag_id, 'absent')
-                            last_tag_id = None
-                            self.current_tag = None
-                            
                 except Exception as read_error:
                     print(f"[ERROR] RFID Lesefehler: {read_error}")
-                    time.sleep(0.1)
-                    continue
+                    # If we had a previous tag, notify its removal
+                    if last_tag_id:
+                        print(f"[DEBUG] RFID: Tag entfernt: {last_tag_id}")
+                        if self.callback:
+                            self.callback(last_tag_id, 'absent')
+                        last_tag_id = None
+                        self.current_tag = None
                 
                 time.sleep(check_interval)
                 
             except Exception as e:
                 print(f"[ERROR] RFID Hauptschleife Fehler: {e}")
                 time.sleep(0.5)
-                
+    
     def _blocking_read(self):
         """Perform a blocking read in a separate thread to avoid hanging the main loop"""
         try:
