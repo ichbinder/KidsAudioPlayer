@@ -4,7 +4,6 @@ Main application module
 import os
 from flask import Flask
 from flask_sqlalchemy import SQLAlchemy
-from flask_migrate import Migrate
 from routes.rfid_routes import rfid_bp
 from routes.song_routes import song_bp
 from routes.playlist_routes import playlist_bp
@@ -25,7 +24,6 @@ app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
 # Initialize database
 db.init_app(app)
-migrate = Migrate(app, db)
 
 # Register blueprints
 app.register_blueprint(rfid_bp)
