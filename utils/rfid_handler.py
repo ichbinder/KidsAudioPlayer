@@ -400,7 +400,17 @@ class RFIDHandler:
                 return None, None
                 
             # Try to read a tag
-            tag_id, text = self.reader.read()
+            try:
+                tag_id, text = self.reader.read()
+            except Exception as e:
+                # Ignore AUTH ERRORs and other read errors
+                # Just try to get the tag ID
+                try:
+                    tag_id = self.reader.read_id()
+                    text = ""
+                except:
+                    logger.debug("[DEBUG] RFID: Kein Tag erkannt")
+                    return None, None
             
             if tag_id:
                 logger.debug(f"[DEBUG] RFID: Tag erkannt! ID: {tag_id}, Text: {text}")
