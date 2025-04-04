@@ -14,6 +14,9 @@ import signal
 import sys
 from mfrc522 import SimpleMFRC522
 import RPi.GPIO as GPIO
+from flask import current_app
+from models import RFIDTag, db
+from utils.player import start_playback, stop_playback
 
 # Setup logging
 logger = logging.getLogger(__name__)
@@ -54,6 +57,8 @@ class RFIDHandler:
         self.tag_removal_thread = None
         self.removal_event = threading.Event()
         self.callback = None
+        self.scanning = False
+        self._init_handler()
         
         # Register signal handlers for clean shutdown
         signal.signal(signal.SIGINT, self._signal_handler)
@@ -72,33 +77,57 @@ class RFIDHandler:
 
     def _init_handler(self):
         """Initialize the RFID reader"""
+        if not RASPBERRY_PI:
+            logger.warning("Nicht auf einem Raspberry Pi - RFID-Leser wird nicht initialisiert")
+            return
+            
         try:
+            # Initialize the reader
             self.reader = SimpleMFRC522()
-            self.initialized = True
-            logger.info("RFID reader initialized successfully")
+            logger.info("RFID-Leser initialisiert")
+            
+            # Set up signal handlers for clean shutdown
+            signal.signal(signal.SIGINT, self._cleanup)
+            signal.signal(signal.SIGTERM, self._cleanup)
+            
         except Exception as e:
-            logger.error(f"Failed to initialize RFID reader: {e}")
-            self.initialized = False
+            logger.error(f"Fehler beim Initialisieren des RFID-Lesers: {e}")
+            self.reader = None
+            
+    def _cleanup(self, signum, frame):
+        """Clean up GPIO on shutdown"""
+        logger.info("RFID-Handler wird beendet...")
+        if self.reader:
+            try:
+                GPIO.cleanup()
+                logger.info("GPIO aufgeräumt")
+            except Exception as e:
+                logger.error(f"Fehler beim Aufräumen von GPIO: {e}")
+        sys.exit(0)
 
     def read_once(self):
         """Read a tag once and return its ID and text"""
-        if not self.initialized:
-            logger.error("RFID reader not initialized")
+        if not self.reader:
+            logger.warning("RFID-Leser nicht initialisiert")
             return None, None
-
+            
         try:
-            self.uid, self.text = self.reader.read()
-            if self.uid:
-                logger.info(f"Tag detected: {self.uid}")
-                return str(self.uid), self.text
-            return None, None
+            # Try to read the tag
+            tag_id, text = self.reader.read_no_block()
+            
+            if tag_id:
+                logger.debug(f"Tag erkannt! ID: {tag_id}, Text: {text}")
+                return str(tag_id), text
+            else:
+                return None, None
+                
         except Exception as e:
-            logger.error(f"Error reading tag: {e}")
+            logger.error(f"RFID Lesefehler: {e}")
             return None, None
 
     def write(self, text):
         """Write text to a tag"""
-        if not self.initialized:
+        if not self.reader:
             logger.error("RFID reader not initialized")
             return False
 
@@ -109,17 +138,6 @@ class RFIDHandler:
         except Exception as e:
             logger.error(f"Error writing to tag: {e}")
             return False
-
-    def cleanup(self):
-        """Clean up GPIO resources"""
-        if self.initialized:
-            try:
-                GPIO.cleanup()
-                logger.info("GPIO cleanup completed")
-            except Exception as e:
-                logger.error(f"Error during GPIO cleanup: {e}")
-            finally:
-                self.initialized = False
 
     def register_callback(self, callback):
         """Register a callback function for tag events"""
@@ -399,26 +417,52 @@ class RFIDHandler:
     def start_continuous_scan(self):
         """Start continuous scanning for RFID tags"""
         if not self.reader:
-            logger.error("RFID reader not initialized")
+            logger.warning("RFID reader not initialized")
             return
         
-        logger.info("Starting continuous RFID scan")
         self.scanning = True
+        logger.info("Starte kontinuierliches Scannen...")
         
-        while self.scanning:
-            try:
-                # Try to read a tag
+        try:
+            while self.scanning:
+                # Read the tag
                 tag_id, text = self.read_once()
                 
                 if tag_id:
-                    logger.info(f"Tag detected: {tag_id}")
+                    if tag_id != self.current_tag:
+                        # New tag detected
+                        logger.debug(f"Neuer Tag erkannt: {tag_id}")
+                        self.current_tag = tag_id
+                        
+                        # Check if tag is registered
+                        with current_app.app_context():
+                            tag = RFIDTag.query.filter_by(tag_id=tag_id).first()
+                            if tag and tag.mp3_filename:
+                                # Start playback
+                                if not start_playback(tag.mp3_filename):
+                                    logger.error(f"Konnte MP3 nicht abspielen: {tag.mp3_filename}")
+                            else:
+                                logger.info(f"Tag {tag_id} nicht registriert oder keine MP3-Datei verknüpft")
                 else:
-                    logger.info("No tag detected")
+                    if self.current_tag:
+                        # Tag removed
+                        logger.debug(f"Tag entfernt: {self.current_tag}")
+                        stop_playback()
+                        self.current_tag = None
+                        
+                # Small delay to prevent CPU overload
+                time.sleep(0.1)
                 
-                time.sleep(0.1)  # Wait between scans
-            except Exception as e:
-                logger.error(f"Error in continuous RFID scan: {e}")
-                time.sleep(1)  # Wait before retrying
+        except Exception as e:
+            logger.error(f"Fehler beim Scannen: {e}")
+        finally:
+            self.scanning = False
+            self.current_tag = None
+            
+    def stop_continuous_scan(self):
+        """Stop continuous scanning"""
+        self.scanning = False
+        logger.info("Scannen gestoppt")
 
     def _signal_handler(self, signum, frame):
         """Signal handler for clean shutdown"""
