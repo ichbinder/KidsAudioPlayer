@@ -20,7 +20,7 @@ logger = logging.getLogger(__name__)
 
 # Create Flask app
 app = Flask(__name__)
-socketio = SocketIO(app)
+socketio = SocketIO(app, cors_allowed_origins="*")
 
 # Configure database
 app.config['SQLALCHEMY_DATABASE_URI'] = os.environ.get('DATABASE_URL', 'sqlite:///kids_audio_player.db')
@@ -75,69 +75,64 @@ rfid_handler.register_callback(tag_callback)
 def start_rfid_scan():
     """Start continuous RFID scanning"""
     global scanning, current_tag
-    from utils.rfid_shared import get_rfid_handler
-    from utils.player import start_playback, stop_playback
-    from models import RFIDTag, Song
     
-    rfid_handler = get_rfid_handler()
-    if not rfid_handler:
-        logger.error("RFID handler not initialized")
+    if scanning:
         return
         
     scanning = True
-    logger.info("Starting continuous RFID scan")
+    logger.info("Starte RFID-Scanning...")
     
-    while scanning:
-        try:
+    try:
+        while scanning:
+            # Get the shared RFID handler
+            rfid_handler = get_rfid_handler()
+            
+            if not rfid_handler:
+                logger.error("RFID handler not initialized")
+                time.sleep(1)
+                continue
+                
             # Try to read a tag
             tag_id, text = rfid_handler.read_once()
             
             if tag_id:
-                # Convert tag_id to string for consistency
-                tag_id = str(tag_id)
-                
-                # Check if this is a new tag
                 if tag_id != current_tag:
-                    logger.debug(f"[DEBUG] RFID: Neuer Tag erkannt: {tag_id}")
+                    # New tag detected
+                    logger.debug(f"Neuer Tag erkannt: {tag_id}")
                     current_tag = tag_id
                     
-                    # Send tag ID to all connected clients
-                    socketio.emit('tag_detected', {'tag_id': tag_id})
+                    # Emit tag detected event
+                    socketio.emit('tag_detected', {
+                        'tag_id': tag_id,
+                        'text': text
+                    })
                     
-                    # Check if tag is registered and play song
-                    with app.app_context():
-                        tag = RFIDTag.query.filter_by(tag_id=tag_id).first()
-                        if tag:
-                            song = Song.query.get(tag.song_id)
-                            if song:
-                                start_playback(song.filename)
-                                socketio.emit('song_playing', {
-                                    'title': song.title,
-                                    'filename': song.filename
-                                })
-                                
+                    # Check if tag is registered
+                    from models import RFIDTag
+                    tag = RFIDTag.query.filter_by(tag_id=tag_id).first()
+                    if tag and tag.mp3_filename:
+                        # Emit song event
+                        socketio.emit('song', {
+                            'tag_id': tag_id,
+                            'mp3_filename': tag.mp3_filename
+                        })
+                    else:
+                        logger.info(f"Tag {tag_id} nicht registriert oder keine MP3-Datei verknüpft")
             else:
-                # No tag detected
                 if current_tag:
-                    logger.debug(f"[RFID REMOVAL] Tag {current_tag} has been removed")
+                    # Tag removed
+                    logger.debug(f"Tag entfernt: {current_tag}")
+                    socketio.emit('tag_removed', {'tag_id': current_tag})
                     current_tag = None
-                    socketio.emit('tag_removed')
-                    stop_playback()
                     
             # Small delay to prevent CPU overload
             time.sleep(0.1)
             
-        except Exception as e:
-            logger.error(f"Error in RFID scan: {e}")
-            time.sleep(1)
-            
-    logger.info("RFID scan stopped")
-
-def stop_rfid_scan():
-    """Stop continuous RFID scanning"""
-    global scanning
-    scanning = False
-    logger.info("Stopping RFID scan")
+    except Exception as e:
+        logger.error(f"Fehler beim RFID-Scanning: {e}")
+    finally:
+        scanning = False
+        current_tag = None
 
 @app.route('/')
 def index():
@@ -166,8 +161,9 @@ def get_songs():
 def handle_connect():
     """Handle WebSocket connection"""
     logger.info("Client connected")
-    if current_tag:
-        socketio.emit('tag_detected', {'tag_id': current_tag})
+    if not scanning:
+        # Start RFID scanning in a separate thread
+        threading.Thread(target=start_rfid_scan, daemon=True).start()
 
 @socketio.on('disconnect')
 def handle_disconnect():
@@ -179,4 +175,4 @@ if __name__ == '__main__':
     rfid_handler.start()
     
     # Run Flask app with SocketIO
-    socketio.run(app, host='0.0.0.0', port=5000, debug=False)
+    socketio.run(app, host='0.0.0.0', port=5000, debug=True)

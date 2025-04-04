@@ -103,12 +103,14 @@
       });
 
       socket.on("tag_detected", (data) => {
+        console.log("Tag detected:", data);
         currentTagId = data.tag_id;
         updateStatus(`Tag erkannt: ${data.tag_id}`);
         document.getElementById("registration-form").style.display = "block";
       });
 
       socket.on("tag_removed", () => {
+        console.log("Tag removed:", data);
         currentTagId = null;
         updateStatus("Kein Tag erkannt");
         document.getElementById("registration-form").style.display = "none";
