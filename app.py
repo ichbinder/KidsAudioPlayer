@@ -2,12 +2,9 @@
 Main application module
 """
 import os
-from flask import Flask
+from flask import Flask, render_template, jsonify
 from flask_sqlalchemy import SQLAlchemy
 from routes.rfid_routes import rfid_bp
-from routes.song_routes import song_bp
-from routes.playlist_routes import playlist_bp
-from routes.player_routes import player_bp
 from models import db
 import logging
 
@@ -27,14 +24,16 @@ db.init_app(app)
 
 # Register blueprints
 app.register_blueprint(rfid_bp)
-app.register_blueprint(song_bp)
-app.register_blueprint(playlist_bp)
-app.register_blueprint(player_bp)
 
 # Create database tables
 with app.app_context():
     db.create_all()
     logger.info("Database tables created")
+
+@app.route('/')
+def index():
+    """Render the main page"""
+    return render_template('index.html')
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=5000, debug=False)
