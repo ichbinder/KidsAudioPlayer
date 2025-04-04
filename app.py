@@ -4,7 +4,6 @@ from datetime import datetime
 from flask import Flask, render_template, jsonify, send_file, request
 from utils.file_handler import get_mp3_files, get_file_path
 from db import db
-import threading
 
 # Configure logging
 logging.basicConfig(level=logging.DEBUG)
@@ -47,61 +46,12 @@ if not os.path.exists(MUSIC_DIR):
     except Exception as e:
         logger.error(f"Failed to create MP3s directory: {e}")
 
-# Initialize RFID Player
-from utils.rfid_player import rfid_player
-rfid_player.init_app(app)
-
 # Register blueprints
 from routes.rfid_routes import rfid_bp
 from routes.api_routes import api_bp, emit_event
 
 app.register_blueprint(rfid_bp)
 app.register_blueprint(api_bp)
-
-# Register RFID player callback to emit events
-def rfid_callback(action, data):
-    """Callback for RFID player events"""
-    if action == 'play':
-        # Log the data we received for debugging
-        logger.debug(f"RFID callback received play event with data: {data}")
-        emit_event('tag_present', {
-            'tag_id': data.get('tag_id', 'unknown'),
-            'name': data.get('name', ''),
-            'song_id': data.get('song_id'),
-            'filename': data.get('filename'),
-            'title': data.get('title')
-        })
-    elif action == 'pause':
-        logger.debug(f"RFID callback received pause event with data: {data}")
-        emit_event('tag_absent', {
-            'tag_id': data.get('tag_id', 'unknown')
-        })
-
-rfid_player.register_client_callback(rfid_callback)
-
-# Global flag to track if RFID player is started
-RFID_PLAYER_STARTED = False
-
-def start_rfid_player():
-    """Start the RFID player in a separate thread"""
-    global RFID_PLAYER_STARTED
-    if not RFID_PLAYER_STARTED:
-        try:
-            rfid_player.start()
-            RFID_PLAYER_STARTED = True
-            logger.info("RFID player started in separate thread")
-        except Exception as e:
-            logger.error(f"Error starting RFID player: {e}")
-
-# Start RFID player in a separate thread
-rfid_thread = threading.Thread(target=start_rfid_player, daemon=True)
-rfid_thread.start()
-
-# Cleanup RFID player when app shuts down
-@app.teardown_appcontext
-def cleanup_rfid_player(exception=None):
-    """Stop the RFID player when the app shuts down"""
-    rfid_player.stop()
 
 @app.route('/')
 def index():
@@ -171,5 +121,5 @@ def server_error(e):
     return jsonify({"error": "Server error"}), 500
 
 if __name__ == '__main__':
-    # Disable debug mode to prevent reloading
+    # Run the Flask app without debug mode
     app.run(host="0.0.0.0", port=5000, debug=False)
