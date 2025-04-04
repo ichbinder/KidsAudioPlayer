@@ -8,6 +8,7 @@ import logging
 import time
 from utils.rfid_shared import get_rfid_handler
 from utils.rfid_player import rfid_player
+from app import app, db
 
 # Configure logging
 logging.basicConfig(level=logging.DEBUG)
@@ -41,4 +42,6 @@ def main():
         rfid_player.stop()
 
 if __name__ == "__main__":
-    main() 
+    # Create application context
+    with app.app_context():
+        main() 
