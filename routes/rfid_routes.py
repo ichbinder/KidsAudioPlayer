@@ -343,47 +343,6 @@ def test_rfid_read():
             "error": f"Fehler beim Lesen des RFID-Tags: {e}"
         }), 500
 
-@rfid_bp.route('/rfid/register', methods=['POST'])
-def register_rfid():
-    """Register a new RFID tag"""
-    try:
-        data = request.get_json()
-        tag_id = data.get('tag_id')
-        name = data.get('name')
-        song_id = data.get('song_id')
-        
-        if not all([tag_id, name, song_id]):
-            return jsonify({"error": "Missing required fields"}), 400
-            
-        # Check if tag is already registered
-        existing_tag = RFIDTag.query.filter_by(tag_id=tag_id).first()
-        if existing_tag:
-            return jsonify({"error": "Tag already registered"}), 400
-            
-        # Check if song exists
-        song = Song.query.get(song_id)
-        if not song:
-            return jsonify({"error": "Song not found"}), 404
-            
-        # Create new tag
-        new_tag = RFIDTag(tag_id=tag_id, name=name, song_id=song_id)
-        db.session.add(new_tag)
-        db.session.commit()
-        
-        return jsonify({
-            "message": "Tag registered successfully",
-            "tag": {
-                "id": new_tag.id,
-                "tag_id": new_tag.tag_id,
-                "name": new_tag.name,
-                "song_id": new_tag.song_id
-            }
-        })
-        
-    except Exception as e:
-        logger.error(f"Error registering RFID tag: {e}")
-        return jsonify({"error": str(e)}), 500
-
 @rfid_bp.route('/rfid/tags', methods=['GET'])
 def get_tags():
     """Get all registered RFID tags"""
