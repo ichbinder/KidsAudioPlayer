@@ -89,7 +89,7 @@ class RFIDPlayer:
             tag_id (str): The ID of the detected/removed tag
             status (str): 'present' or 'absent'
         """
-        logger.info(f"RFID event: Tag {tag_id} is {status}")
+        print(f"[DEBUG] RFID Player: Event empfangen - Tag {tag_id}, Status {status}")
         
         # We need to wrap DB operations in application context
         if self.app:
@@ -100,12 +100,15 @@ class RFIDPlayer:
             self._process_tag_event(tag_id, status)
             
     def _process_tag_event(self, tag_id, status):
+        print(f"[DEBUG] RFID Player: Verarbeite Event - Tag {tag_id}, Status {status}")
+        
         if status == 'present':
             # Tag placed on reader - start playing associated song
+            print(f"[DEBUG] RFID Player: Suche Song für Tag {tag_id}")
             song = RFIDController.get_song_by_tag(tag_id)
             
             if not song:
-                logger.warning(f"No song associated with tag {tag_id}")
+                print(f"[DEBUG] RFID Player: Kein Song für Tag {tag_id} gefunden")
                 return
             
             # Store current song
@@ -118,25 +121,24 @@ class RFIDPlayer:
                 if tag and tag.name:
                     tag_name = tag.name
             except Exception as e:
-                logger.error(f"Error getting tag name: {e}")
+                print(f"[ERROR] RFID Player: Fehler beim Abrufen des Tag-Namens: {e}")
             
             # Notify clients to play this song
+            print(f"[DEBUG] RFID Player: Benachrichtige Clients zum Abspielen von {song.title}")
             self._notify_clients('play', {
-                'tag_id': tag_id,  # Include the tag_id
-                'name': tag_name,  # Include tag name if available
+                'tag_id': tag_id,
+                'name': tag_name,
                 'song_id': song.id,
                 'filename': song.filename,
                 'title': song.title
             })
             
-            logger.info(f"Playing song: {song.title}")
-            
         elif status == 'absent':
             # Tag removed - pause playback
+            print(f"[DEBUG] RFID Player: Tag entfernt, pausiere Wiedergabe")
             self._notify_clients('pause', {
-                'tag_id': tag_id  # Include tag_id in pause event too
+                'tag_id': tag_id
             })
-            logger.info("Pausing playback")
     
     def register_client_callback(self, callback):
         """

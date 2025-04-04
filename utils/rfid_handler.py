@@ -186,7 +186,6 @@ class RFIDHandler:
         check_interval = 0.05  # Very responsive checking
         read_counter = 0  # Count read attempts for debug output
         
-        # Direkt mit blockierendem Lesen starten - ähnlich wie in deinem Testskript
         while self.running:
             try:
                 # Debug-Ausgabe alle 100 Leseversuche (ca. alle 5 Sekunden)
@@ -201,84 +200,37 @@ class RFIDHandler:
                     
                     # If we got a tag, great!
                     if tag_id:
-                        print(f"[RFID SCAN] Tag detected with non-blocking read! ID: {tag_id}, Text: {text}")
+                        print(f"[DEBUG] RFID: Tag erkannt! ID: {tag_id}, Text: {text}")
+                        # Convert tag_id to string for consistency
+                        tag_id = str(tag_id)
+                        
+                        # New tag detected or same tag still present
+                        if last_tag_id != tag_id:
+                            # It's a new tag
+                            print(f"[DEBUG] RFID: Neuer Tag erkannt: {tag_id}")
+                            if self.callback:
+                                self.callback(tag_id, 'present')
+                            last_tag_id = tag_id
+                            self.current_tag = tag_id
                     else:
                         # No tag found with non-blocking read
-                        # Every 20 attempts (ca. 1 second), try a blocking read with timeout
-                        if read_counter % 20 == 0:
-                            print("[RFID SCAN] Trying blocking read...")
-                            # This will timeout after 1 second
-                            blocking_result = self._blocking_read()
-                            if blocking_result:
-                                tag_id = blocking_result
-                                text = ""  # We don't have the text from _blocking_read
-                                print(f"[RFID SCAN] Tag detected with blocking read! ID: {tag_id}")
-                            else:
-                                # If blocking read also found nothing, continue
-                                time.sleep(check_interval)
-                                continue
-                        else:
-                            # Just continue with normal cycle
-                            time.sleep(check_interval)
-                            continue
+                        if last_tag_id:
+                            print(f"[DEBUG] RFID: Tag entfernt: {last_tag_id}")
+                            if self.callback:
+                                self.callback(last_tag_id, 'absent')
+                            last_tag_id = None
+                            self.current_tag = None
                             
                 except Exception as read_error:
-                    print(f"[ERROR] Error during RFID read: {read_error}")
-                    # If we get an error in read_no_block, try blocking read
-                    if read_counter % 10 == 0:  # Don't try every time to avoid overloading
-                        print("[RFID SCAN] Trying blocking read after error...")
-                        blocking_result = self._blocking_read()
-                        if blocking_result:
-                            tag_id = blocking_result
-                            text = ""
-                            print(f"[RFID SCAN] Tag detected with blocking read! ID: {tag_id}")
-                        else:
-                            time.sleep(check_interval)
-                            continue
-                    else:
-                        time.sleep(check_interval)
-                        continue
+                    print(f"[ERROR] RFID Lesefehler: {read_error}")
+                    time.sleep(0.1)
+                    continue
                 
-                # Sobald wir hier sind, haben wir erfolgreich einen Tag gelesen
-                # Convert tag_id to string for consistency
-                tag_id = str(tag_id)
-                
-                # Immer ausgeben, wenn ein Tag gelesen wird
-                print(f"[RFID TAG] ID: {tag_id}")
-                
-                # New tag detected or same tag still present
-                if last_tag_id != tag_id:
-                    # It's a new tag
-                    print(f"[RFID NEW] New RFID tag detected: {tag_id}")
-                    logger.debug(f"New RFID tag detected: {tag_id}")
-                    
-                    # If we had a previous tag, send 'absent' for it first
-                    if last_tag_id and self.callback:
-                        self.callback(last_tag_id, 'absent')
-                        print(f"[RFID REMOVED] Previous tag removed: {last_tag_id}")
-                        logger.info(f"Previous RFID tag removed: {last_tag_id}")
-                    
-                    # Now handle the new tag
-                    last_tag_id = tag_id
-                    tag_missing_count = 0
-                    self.current_tag = tag_id
-                    if self.callback:
-                        self.callback(tag_id, 'present')
-                        print(f"[RFID CALLBACK] Tag present callback sent: {tag_id}")
-                    logger.info(f"RFID tag detected: {tag_id}")
-                else:
-                    # Same tag still present, reset missing count
-                    tag_missing_count = 0
-                    print(f"[RFID SAME] Tag still present: {tag_id}")
-                    logger.debug(f"RFID tag still present: {tag_id}")
-                
-                # Kurze Pause, damit wir nicht zu oft lesen
                 time.sleep(check_interval)
                 
             except Exception as e:
-                print(f"[ERROR] RFID detection loop error: {e}")
-                logger.error(f"Error in RFID detection loop: {e}")
-                time.sleep(0.5)  # Wait a bit on errors
+                print(f"[ERROR] RFID Hauptschleife Fehler: {e}")
+                time.sleep(0.5)
                 
     def _blocking_read(self):
         """Perform a blocking read in a separate thread to avoid hanging the main loop"""
