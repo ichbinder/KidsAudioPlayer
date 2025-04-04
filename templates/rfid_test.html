@@ -1,0 +1,242 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>RFID-Reader Testseite - Kid's Music Player</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/styles.css') }}">
+    <link href="https://fonts.googleapis.com/css2?family=Comic+Neue:wght@400;700&display=swap" rel="stylesheet">
+    <style>
+        /* Additional styles for RFID testing */
+        .test-container {
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        
+        .test-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+        
+        .card {
+            background-color: var(--card-background);
+            border-radius: var(--border-radius);
+            padding: 20px;
+            margin-bottom: 20px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+        }
+        
+        .button {
+            background-color: var(--primary-color);
+            color: white;
+            border: none;
+            padding: 10px 15px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-family: inherit;
+            font-size: 1rem;
+            transition: background-color 0.2s;
+        }
+        
+        .button:hover {
+            background-color: #e55a5a;
+        }
+        
+        .button.secondary {
+            background-color: var(--secondary-color);
+        }
+        
+        .button.secondary:hover {
+            background-color: #3db8b0;
+        }
+        
+        .button:disabled {
+            background-color: #cccccc;
+            cursor: not-allowed;
+        }
+        
+        .result-area {
+            margin-top: 20px;
+            padding: 15px;
+            border-radius: 5px;
+            background-color: #f8f9fa;
+            display: none;
+        }
+        
+        .result-area.success {
+            background-color: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+        
+        .result-area.error {
+            background-color: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+        
+        .loading-indicator {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 3px solid rgba(255, 255, 255, 0.3);
+            border-radius: 50%;
+            border-top-color: white;
+            animation: spin 1s ease-in-out infinite;
+            margin-right: 10px;
+        }
+        
+        @keyframes spin {
+            to {
+                transform: rotate(360deg);
+            }
+        }
+        
+        .nav-links {
+            display: flex;
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+        
+        .nav-link {
+            text-decoration: none;
+            color: var(--secondary-color);
+            font-weight: bold;
+        }
+        
+        .nav-link:hover {
+            text-decoration: underline;
+        }
+        
+        .instructions {
+            margin-bottom: 20px;
+            padding: 15px;
+            background-color: #fff3cd;
+            border-radius: 5px;
+            color: #856404;
+            border: 1px solid #ffeeba;
+        }
+
+        .instructions h3 {
+            margin-top: 0;
+        }
+
+        .instructions ul {
+            padding-left: 20px;
+        }
+
+        .instructions li {
+            margin-bottom: 5px;
+        }
+        
+        .tag-id {
+            font-family: monospace;
+            font-size: 1.2em;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+    <div class="test-container">
+        <div class="test-header">
+            <h1>RFID-Reader Testseite</h1>
+        </div>
+        
+        <div class="nav-links">
+            <a href="{{ url_for('index') }}" class="nav-link">← Zurück zum Player</a>
+            <a href="{{ url_for('rfid.rfid_management') }}" class="nav-link">← Zurück zur RFID-Verwaltung</a>
+        </div>
+        
+        <div class="card">
+            <h2>RFID-Reader direkter Test</h2>
+            
+            <div class="instructions">
+                <h3>Anleitung:</h3>
+                <ul>
+                    <li>Halten Sie einen RFID-Tag an den Leser</li>
+                    <li>Klicken Sie auf "RFID-Tag lesen"</li>
+                    <li>Die ID des Tags wird hier angezeigt, wenn sie erkannt wird</li>
+                    <li>Dieser Test nutzt die direkten RFID-Bibliotheken, nicht die Hauptanwendung</li>
+                    <li>Wenn ein Tag hier erkannt wird, aber nicht in der Hauptanwendung, liegt das Problem in der Anwendungslogik</li>
+                </ul>
+            </div>
+            
+            {% if has_rfid_hardware %}
+                <button id="read-button" class="button secondary">RFID-Tag lesen</button>
+                <div id="result-area" class="result-area"></div>
+            {% else %}
+                <div class="result-area error" style="display: block;">
+                    <p>RFID-Hardware wurde nicht erkannt. Diese Funktion ist nur auf dem Raspberry Pi mit RFID-Hardware verfügbar.</p>
+                    <p>Stattdessen können Sie die RFID-Simulation in der RFID-Verwaltung verwenden.</p>
+                </div>
+                <button class="button secondary" disabled>RFID-Tag lesen</button>
+            {% endif %}
+        </div>
+        
+        <div class="card">
+            <h2>Informationen zum RFID-Reader</h2>
+            <p>Dieser Test verwendet die MFRC522-Bibliothek direkt, um einen RFID-Tag zu lesen.</p>
+            <p>Hardwarestatus: <strong>{% if has_rfid_hardware %}Verfügbar{% else %}Nicht verfügbar{% endif %}</strong></p>
+            <p>Bibliotheken: <code>mfrc522</code> und <code>RPi.GPIO</code></p>
+            <p>Wenn der direkte Test funktioniert, aber die Hauptanwendung nicht, überprüfen Sie die Anwendungslogik in <code>utils/rfid_handler.py</code>.</p>
+        </div>
+    </div>
+    
+    {% if has_rfid_hardware %}
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const readButton = document.getElementById('read-button');
+            const resultArea = document.getElementById('result-area');
+            
+            readButton.addEventListener('click', function() {
+                // Disable button and show loading state
+                readButton.disabled = true;
+                readButton.innerHTML = '<span class="loading-indicator"></span> Lese RFID-Tag...';
+                resultArea.style.display = 'none';
+                resultArea.className = 'result-area';
+                
+                // Make API call to read RFID tag
+                fetch('/rfid/test/read', {
+                    method: 'POST'
+                })
+                .then(response => response.json())
+                .then(data => {
+                    // Re-enable button
+                    readButton.disabled = false;
+                    readButton.textContent = 'RFID-Tag lesen';
+                    
+                    // Display result
+                    resultArea.style.display = 'block';
+                    
+                    if (data.success) {
+                        resultArea.className = 'result-area success';
+                        resultArea.innerHTML = `
+                            <h3>RFID-Tag erkannt!</h3>
+                            <p>Tag-ID: <span class="tag-id">${data.tag_id}</span></p>
+                            <p>Text: ${data.text || '(kein Text)'}</p>
+                            <p>Sie können diese Tag-ID jetzt in der RFID-Verwaltung verwenden, um den Tag mit einem Song zu verknüpfen.</p>
+                        `;
+                    } else {
+                        resultArea.className = 'result-area error';
+                        resultArea.innerHTML = `<p>Fehler: ${data.error}</p>`;
+                    }
+                })
+                .catch(error => {
+                    // Re-enable button
+                    readButton.disabled = false;
+                    readButton.textContent = 'RFID-Tag lesen';
+                    
+                    // Display error
+                    resultArea.style.display = 'block';
+                    resultArea.className = 'result-area error';
+                    resultArea.innerHTML = `<p>Fehler bei der Anfrage: ${error}</p>`;
+                });
+            });
+        });
+    </script>
+    {% endif %}
+</body>
+</html>

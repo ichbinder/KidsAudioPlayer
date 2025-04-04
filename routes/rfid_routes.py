@@ -203,3 +203,96 @@ def simulate_tag():
             return jsonify({"error": f"Fehler bei der Simulation: {e}"}), 500
         flash(f'Fehler bei der Simulation: {e}', 'error')
         return redirect(url_for('rfid.rfid_management'))
+
+@rfid_bp.route('/test', methods=['GET'])
+def test_rfid_reader():
+    """Test page for direct RFID reader testing"""
+    from utils.rfid_handler import RASPBERRY_PI
+    
+    # Check if we're running on a Raspberry Pi with RFID hardware
+    has_rfid_hardware = RASPBERRY_PI
+    
+    return render_template('rfid_test.html', has_rfid_hardware=has_rfid_hardware)
+
+@rfid_bp.route('/test/read', methods=['POST'])
+def test_rfid_read():
+    """Endpoint to directly read from RFID reader for testing"""
+    from utils.rfid_handler import RASPBERRY_PI
+    import time
+    import json
+    
+    # Only allow this on Raspberry Pi
+    if not RASPBERRY_PI:
+        return jsonify({
+            "success": False, 
+            "error": "Diese Funktion ist nur auf dem Raspberry Pi mit RFID-Hardware verfügbar."
+        }), 400
+    
+    try:
+        # Import hardware libraries
+        from mfrc522 import SimpleMFRC522
+        import RPi.GPIO as GPIO
+        
+        # Initialize reader
+        reader = SimpleMFRC522()
+        
+        # Read with timeout
+        print("[TEST] Direct RFID read test started")
+        timeout = 5  # 5 seconds timeout
+        start_time = time.time()
+        tag_id = None
+        text = ""
+        
+        # Try non-blocking reads with timeout
+        while time.time() - start_time < timeout and not tag_id:
+            try:
+                tag_id, text = reader.read_no_block()
+                if tag_id:
+                    break
+                time.sleep(0.1)
+            except Exception as e:
+                print(f"[TEST] Error during read_no_block: {e}")
+        
+        # If we didn't find a tag with non-blocking, try one blocking read
+        if not tag_id and time.time() - start_time < timeout:
+            print("[TEST] Trying blocking read...")
+            try:
+                tag_id, text = reader.read()
+            except Exception as e:
+                print(f"[TEST] Error during blocking read: {e}")
+        
+        # Clean up
+        try:
+            GPIO.cleanup()
+        except:
+            pass
+        
+        # Process results
+        if tag_id:
+            tag_id = str(tag_id)
+            text = text.strip() if text else ""
+            print(f"[TEST] Tag detected! ID: {tag_id}, Text: {text}")
+            return jsonify({
+                "success": True,
+                "tag_id": tag_id,
+                "text": text
+            })
+        else:
+            print("[TEST] No tag detected within timeout period")
+            return jsonify({
+                "success": False,
+                "error": "Kein RFID-Tag innerhalb der Zeitbeschränkung erkannt. Bitte halten Sie einen Tag an den Leser und versuchen Sie es erneut."
+            })
+            
+    except ImportError as e:
+        print(f"[TEST] Import error: {e}")
+        return jsonify({
+            "success": False,
+            "error": f"Fehler beim Importieren der RFID-Bibliotheken: {e}"
+        }), 500
+    except Exception as e:
+        print(f"[TEST] General error: {e}")
+        return jsonify({
+            "success": False,
+            "error": f"Fehler beim Lesen des RFID-Tags: {e}"
+        }), 500

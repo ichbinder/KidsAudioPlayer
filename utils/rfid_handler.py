@@ -7,6 +7,7 @@ It's designed to work with Raspberry Pi.
 import logging
 import threading
 import time
+import os
 from datetime import datetime
 from contextlib import contextmanager
 
@@ -14,14 +15,27 @@ from contextlib import contextmanager
 logger = logging.getLogger(__name__)
 
 # Flag to determine if we're running on a Raspberry Pi
+GPIO = None
+SimpleMFRC522 = None
+RASPBERRY_PI = False
+
 try:
     import RPi.GPIO as GPIO
     from mfrc522 import SimpleMFRC522
     RASPBERRY_PI = True
     logger.info("Running on Raspberry Pi, RFID module enabled")
-except (ImportError, RuntimeError):
+    print("[INIT] Running on Raspberry Pi, RFID module enabled")
+except (ImportError, RuntimeError) as e:
     RASPBERRY_PI = False
-    logger.warning("Not running on Raspberry Pi or missing required libraries. RFID functionality will be simulated.")
+    logger.warning(f"Not running on Raspberry Pi or missing required libraries. RFID functionality will be simulated. Error: {e}")
+    print(f"[INIT] Not running on Raspberry Pi or missing required libraries. RFID functionality will be simulated. Error: {e}")
+    
+# Allow force enabling simulation mode for testing (even on Raspberry Pi)
+# Set the environment variable RFID_SIMULATION=1 to enable
+if os.environ.get('RFID_SIMULATION') == '1':
+    RASPBERRY_PI = False
+    logger.info("RFID simulation mode forced by environment variable")
+    print("[INIT] RFID simulation mode forced by environment variable")
 
 class RFIDHandler:
     """
@@ -40,13 +54,17 @@ class RFIDHandler:
         self.current_tag = None
         self.running = False
         self.thread = None
+        self.tag_removal_thread = None
+        self.removal_event = threading.Event()
         
         # Initialize the RFID reader if we're on a Raspberry Pi
         if RASPBERRY_PI:
             try:
                 self.reader = SimpleMFRC522()
+                print("[INIT] RFID reader initialized successfully")
                 logger.info("RFID reader initialized")
             except Exception as e:
+                print(f"[ERROR] Failed to initialize RFID reader: {e}")
                 logger.error(f"Failed to initialize RFID reader: {e}")
                 self.reader = None
     
@@ -56,24 +74,96 @@ class RFIDHandler:
             logger.warning("RFID handler already running")
             return
             
+        # Print detailed startup information
+        print("\n[RFID] Starting RFID detection system")
+        if not RASPBERRY_PI:
+            print("[RFID] ⚠️ Not running on Raspberry Pi or missing required libraries")
+            print("[RFID] Using simulation mode instead")
+        else:
+            print(f"[RFID] 🔍 Running on Raspberry Pi with reader: {self.reader}")
+        
+        # Start the main detection loop
         self.running = True
         self.thread = threading.Thread(target=self._detection_loop, daemon=True)
         self.thread.start()
+        
+        # Start a separate thread to detect tag removal
+        if RASPBERRY_PI:
+            self.tag_removal_thread = threading.Thread(target=self._check_tag_removal, daemon=True)
+            self.tag_removal_thread.start()
+            print("[RFID] Started additional tag removal detection thread")
+            
         logger.info("RFID detection started")
+        
+    def _check_tag_removal(self):
+        """Separate thread to check for tag removal"""
+        print("[RFID] Tag removal detection thread started")
+        last_tag_id = None
+        consecutive_misses = 0
+        
+        while self.running:
+            time.sleep(0.1)  # Short interval for quick detection
+            
+            # If we have a current tag, we need to check if it's still there
+            current_tag = self.current_tag
+            if current_tag:
+                # Try to read the tag
+                try:
+                    tag_id, _ = self.reader.read_no_block()
+                    if not tag_id:
+                        consecutive_misses += 1
+                        if consecutive_misses >= 5:  # After 0.5 seconds of no tag
+                            print(f"[RFID REMOVAL] Tag {current_tag} has been removed (after {consecutive_misses} consecutive misses)")
+                            # Notify callback that tag is gone
+                            if self.callback:
+                                self.callback(current_tag, 'absent')
+                            self.current_tag = None
+                            consecutive_misses = 0
+                    else:
+                        # Tag is still there
+                        consecutive_misses = 0
+                except Exception as e:
+                    print(f"[ERROR] Error checking for tag removal: {e}")
+                    time.sleep(0.5)  # Wait a bit longer on errors
+            else:
+                # No current tag, just reset
+                consecutive_misses = 0
     
     def stop(self):
         """Stop the RFID detection thread"""
         if not self.running:
             return
-            
-        self.running = False
-        if self.thread:
-            self.thread.join(timeout=2.0)
-        logger.info("RFID detection stopped")
         
+        print("[RFID] Stopping RFID detection system...")    
+        self.running = False
+        
+        # Stop main detection thread
+        if self.thread:
+            try:
+                self.thread.join(timeout=2.0)
+                print("[RFID] Main detection thread stopped successfully")
+            except Exception as e:
+                print(f"[RFID] Error stopping main thread: {e}")
+        
+        # Stop tag removal thread if it exists
+        if hasattr(self, 'tag_removal_thread') and self.tag_removal_thread:
+            try:
+                self.tag_removal_thread.join(timeout=2.0)
+                print("[RFID] Tag removal thread stopped successfully")
+            except Exception as e:
+                print(f"[RFID] Error stopping tag removal thread: {e}")
+                
         # Clean up GPIO on shutdown if we're on a Raspberry Pi
         if RASPBERRY_PI:
-            GPIO.cleanup()
+            try:
+                print("[RFID] Cleaning up GPIO...")
+                GPIO.cleanup()
+                print("[RFID] GPIO cleanup completed")
+            except Exception as e:
+                print(f"[RFID] Error during GPIO cleanup: {e}")
+        
+        print("[RFID] RFID detection system stopped")
+        logger.info("RFID detection stopped")
     
     def _detection_loop(self):
         """Main detection loop, runs in a separate thread"""
@@ -86,101 +176,160 @@ class RFIDHandler:
             logger.error("RFID reader not initialized, detection loop aborted")
             return
             
+        print("============================================")
+        print("RFID detection loop started on Raspberry Pi")
+        print("This will continuously scan for RFID tags")
+        print("============================================")
+            
         last_tag_id = None
         tag_missing_count = 0
         check_interval = 0.05  # Very responsive checking
-        use_blocking_read = True  # Flag to switch between blocking and non-blocking reads
+        read_counter = 0  # Count read attempts for debug output
         
+        # Direkt mit blockierendem Lesen starten - ähnlich wie in deinem Testskript
         while self.running:
             try:
-                # Try to read the tag - alternate between blocking and non-blocking
-                if not last_tag_id and use_blocking_read:
-                    # No tag detected yet, use blocking read to wait for one (with timeout)
-                    logger.debug("Using blocking read to wait for tag")
-                    tag_read_thread = threading.Thread(target=self._blocking_read)
-                    tag_read_thread.daemon = True
-                    tag_read_thread.start()
-                    
-                    # Wait for a short time to see if a tag was detected
-                    for _ in range(20):  # 1 second max wait (20 * 0.05)
-                        if not self.running:
-                            break
-                        if self.current_tag:
-                            # Tag detected by the blocking read
-                            tag_id = self.current_tag
-                            break
-                        time.sleep(0.05)
-                    else:
-                        # No tag detected in the timeout period
-                        tag_id = None
-                else:
-                    # Already have a tag or using non-blocking
-                    tag_id, _ = self.reader.read_no_block()
+                # Debug-Ausgabe alle 100 Leseversuche (ca. alle 5 Sekunden)
+                read_counter += 1
+                if read_counter % 100 == 0:
+                    print(f"[DEBUG] RFID: Noch aktiv, warte auf Tags... ({read_counter} Leseversuche)")
                 
-                if tag_id:
-                    # Convert tag_id to string for consistency
-                    tag_id = str(tag_id)
+                # Versuche, den Tag zuerst nicht-blockierend zu lesen
+                try:
+                    # Non-blocking read first 
+                    tag_id, text = self.reader.read_no_block()
                     
-                    # New tag detected or same tag still present
-                    if last_tag_id != tag_id:
-                        # It's a new tag
-                        logger.debug(f"New RFID tag detected: {tag_id}")
-                        
-                        # If we had a previous tag, send 'absent' for it first
-                        if last_tag_id and self.callback:
-                            self.callback(last_tag_id, 'absent')
-                            logger.info(f"Previous RFID tag removed: {last_tag_id}")
-                        
-                        # Now handle the new tag
-                        last_tag_id = tag_id
-                        tag_missing_count = 0
-                        self.current_tag = tag_id
-                        if self.callback:
-                            self.callback(tag_id, 'present')
-                        logger.info(f"RFID tag detected: {tag_id}")
-                        
-                        # Switch to non-blocking for a while to check for removals
-                        use_blocking_read = False
+                    # If we got a tag, great!
+                    if tag_id:
+                        print(f"[RFID SCAN] Tag detected with non-blocking read! ID: {tag_id}, Text: {text}")
                     else:
-                        # Same tag still present, reset missing count
-                        tag_missing_count = 0
-                        logger.debug(f"RFID tag still present: {tag_id}")
-                else:
-                    # No tag detected
-                    tag_missing_count += 1
-                    logger.debug(f"No tag detected, missing count: {tag_missing_count}")
-                    
-                    # Only consider the tag missing after a few consecutive failed reads
-                    if tag_missing_count >= 2 and last_tag_id:  # Very fast response
-                        if self.callback:
-                            self.callback(last_tag_id, 'absent')
-                        logger.info(f"RFID tag removed: {last_tag_id}")
-                        last_tag_id = None
-                        self.current_tag = None
-                        tag_missing_count = 0
-                        
-                        # Switch back to blocking read to wait for next tag
-                        use_blocking_read = True
+                        # No tag found with non-blocking read
+                        # Every 20 attempts (ca. 1 second), try a blocking read with timeout
+                        if read_counter % 20 == 0:
+                            print("[RFID SCAN] Trying blocking read...")
+                            # This will timeout after 1 second
+                            blocking_result = self._blocking_read()
+                            if blocking_result:
+                                tag_id = blocking_result
+                                text = ""  # We don't have the text from _blocking_read
+                                print(f"[RFID SCAN] Tag detected with blocking read! ID: {tag_id}")
+                            else:
+                                # If blocking read also found nothing, continue
+                                time.sleep(check_interval)
+                                continue
+                        else:
+                            # Just continue with normal cycle
+                            time.sleep(check_interval)
+                            continue
+                            
+                except Exception as read_error:
+                    print(f"[ERROR] Error during RFID read: {read_error}")
+                    # If we get an error in read_no_block, try blocking read
+                    if read_counter % 10 == 0:  # Don't try every time to avoid overloading
+                        print("[RFID SCAN] Trying blocking read after error...")
+                        blocking_result = self._blocking_read()
+                        if blocking_result:
+                            tag_id = blocking_result
+                            text = ""
+                            print(f"[RFID SCAN] Tag detected with blocking read! ID: {tag_id}")
+                        else:
+                            time.sleep(check_interval)
+                            continue
+                    else:
+                        time.sleep(check_interval)
+                        continue
                 
-                # Sleep to prevent 100% CPU usage
+                # Sobald wir hier sind, haben wir erfolgreich einen Tag gelesen
+                # Convert tag_id to string for consistency
+                tag_id = str(tag_id)
+                
+                # Immer ausgeben, wenn ein Tag gelesen wird
+                print(f"[RFID TAG] ID: {tag_id}")
+                
+                # New tag detected or same tag still present
+                if last_tag_id != tag_id:
+                    # It's a new tag
+                    print(f"[RFID NEW] New RFID tag detected: {tag_id}")
+                    logger.debug(f"New RFID tag detected: {tag_id}")
+                    
+                    # If we had a previous tag, send 'absent' for it first
+                    if last_tag_id and self.callback:
+                        self.callback(last_tag_id, 'absent')
+                        print(f"[RFID REMOVED] Previous tag removed: {last_tag_id}")
+                        logger.info(f"Previous RFID tag removed: {last_tag_id}")
+                    
+                    # Now handle the new tag
+                    last_tag_id = tag_id
+                    tag_missing_count = 0
+                    self.current_tag = tag_id
+                    if self.callback:
+                        self.callback(tag_id, 'present')
+                        print(f"[RFID CALLBACK] Tag present callback sent: {tag_id}")
+                    logger.info(f"RFID tag detected: {tag_id}")
+                else:
+                    # Same tag still present, reset missing count
+                    tag_missing_count = 0
+                    print(f"[RFID SAME] Tag still present: {tag_id}")
+                    logger.debug(f"RFID tag still present: {tag_id}")
+                
+                # Kurze Pause, damit wir nicht zu oft lesen
                 time.sleep(check_interval)
                 
             except Exception as e:
+                print(f"[ERROR] RFID detection loop error: {e}")
                 logger.error(f"Error in RFID detection loop: {e}")
                 time.sleep(0.5)  # Wait a bit on errors
                 
     def _blocking_read(self):
         """Perform a blocking read in a separate thread to avoid hanging the main loop"""
         try:
+            print("[RFID] Starting blocking RFID read (timeout: 3s)")
             logger.debug("Starting blocking RFID read")
-            tag_id, _ = self.reader.read()
+            
+            # Add timeout mechanism for blocking read
+            read_thread = threading.Thread(target=self._perform_blocking_read)
+            read_thread.daemon = True
+            read_thread.start()
+            
+            # Wait with timeout
+            read_thread.join(timeout=3.0)
+            
+            if read_thread.is_alive():
+                # Thread is still running after timeout
+                print("[RFID] Blocking read timed out")
+                logger.warning("Blocking RFID read timed out")
+                return None
+                
+            # If we got here, the read completed
+            if self.current_tag:
+                print(f"[RFID] Blocking read detected tag: {self.current_tag}")
+                logger.debug(f"Blocking read detected tag: {self.current_tag}")
+                return self.current_tag
+            else:
+                print("[RFID] Blocking read returned no tag")
+                logger.debug("Blocking read returned no tag")
+                return None
+                
+        except Exception as e:
+            print(f"[RFID ERROR] Error in blocking RFID read: {e}")
+            logger.error(f"Error in blocking RFID read: {e}")
+            self.current_tag = None
+            return None
+            
+    def _perform_blocking_read(self):
+        """Helper for _blocking_read - performs the actual blocking read"""
+        if not self.reader:
+            print("[RFID ERROR] No reader available for blocking read")
+            return
+            
+        try:
+            # This is the actual blocking call
+            tag_id, text = self.reader.read()
             if tag_id:
                 self.current_tag = str(tag_id)
-                logger.debug(f"Blocking read detected tag: {self.current_tag}")
-            else:
-                logger.debug("Blocking read returned no tag")
+                print(f"[RFID] Raw blocking read result: {tag_id}, {text}")
         except Exception as e:
-            logger.error(f"Error in blocking RFID read: {e}")
+            print(f"[RFID ERROR] Error in _perform_blocking_read: {e}")
             self.current_tag = None
     
     def _simulation_loop(self):
