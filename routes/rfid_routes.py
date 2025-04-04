@@ -6,6 +6,7 @@ from flask import Blueprint, request, jsonify, render_template, redirect, url_fo
 from controllers.rfid_controller import RFIDController
 from models import Song, db, RFIDTag
 from utils.rfid_shared import get_rfid_handler
+import os
 
 logger = logging.getLogger(__name__)
 
@@ -18,8 +19,6 @@ def rfid_management():
     # Get all available songs from mp3 directory
     from utils.file_handler import get_mp3_files
     from app import MUSIC_DIR
-    import os
-    from sqlalchemy.exc import IntegrityError
     
     # Ensure all MP3 files are in the database
     mp3_files = get_mp3_files(MUSIC_DIR)
@@ -55,9 +54,6 @@ def rfid_management():
             try:
                 db.session.commit()
                 logger.info(f"Added song {mp3['title']} to database")
-            except IntegrityError:
-                logger.error(f"Database integrity error adding song {mp3['title']}")
-                db.session.rollback()
             except Exception as e:
                 logger.error(f"Error adding song {mp3['title']} to database: {e}")
                 db.session.rollback()
@@ -69,40 +65,60 @@ def rfid_management():
     return render_template('rfid_management.html', tags=tags, songs=songs)
 
 @rfid_bp.route('/register', methods=['POST'])
-def register_tag():
+def register_rfid():
     """Register a new RFID tag"""
-    tag_id = request.form.get('tag_id')
-    song_id = request.form.get('song_id')
-    name = request.form.get('name')
-    
-    if not tag_id or not song_id:
-        logger.error("Missing tag_id or song_id in register request")
-        return jsonify({"error": "Missing required fields"}), 400
-    
     try:
-        song_id = int(song_id)
-    except ValueError:
-        logger.error(f"Invalid song_id: {song_id}")
-        return jsonify({"error": "Invalid song ID"}), 400
-    
-    tag = RFIDController.register_tag(tag_id, song_id, name)
-    
-    if not tag:
-        return jsonify({"error": "Failed to register tag"}), 500
-    
-    # For AJAX requests, return JSON
-    if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
-        return jsonify({"success": True, "tag": {
-            "id": tag.id,
-            "tag_id": tag.tag_id,
-            "name": tag.name,
-            "song_id": tag.song_id,
-            "song_title": tag.song.title
-        }})
-    
-    # For form submissions, redirect back to management page
-    flash('RFID-Tag erfolgreich registriert', 'success')
-    return redirect(url_for('rfid.rfid_management'))
+        data = request.get_json()
+        if not data:
+            return jsonify({"error": "No data provided"}), 400
+            
+        tag_id = data.get('tag_id')
+        name = data.get('name')
+        song_filename = data.get('song_filename')
+        
+        if not all([tag_id, name, song_filename]):
+            return jsonify({"error": "Missing required fields"}), 400
+            
+        # Check if tag is already registered
+        existing_tag = RFIDTag.query.filter_by(tag_id=tag_id).first()
+        if existing_tag:
+            return jsonify({"error": "Tag already registered"}), 400
+            
+        # Get or create the song
+        song = Song.query.filter_by(filename=song_filename).first()
+        if not song:
+            # Create new song entry
+            song = Song(
+                title=os.path.splitext(song_filename)[0],
+                filename=song_filename
+            )
+            db.session.add(song)
+            db.session.commit()
+            
+        # Create new tag entry
+        new_tag = RFIDTag(
+            tag_id=tag_id,
+            name=name,
+            song_id=song.id
+        )
+        
+        db.session.add(new_tag)
+        db.session.commit()
+        
+        return jsonify({
+            "message": "Tag registered successfully",
+            "tag": {
+                "id": new_tag.id,
+                "tag_id": new_tag.tag_id,
+                "name": new_tag.name,
+                "song_id": new_tag.song_id
+            }
+        })
+        
+    except Exception as e:
+        logger.error(f"Error registering RFID tag: {e}")
+        db.session.rollback()
+        return jsonify({"error": str(e)}), 500
 
 @rfid_bp.route('/unregister/<tag_id>', methods=['POST', 'DELETE'])
 def unregister_tag(tag_id):

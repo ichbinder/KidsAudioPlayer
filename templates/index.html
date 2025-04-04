@@ -151,13 +151,20 @@
           return;
         }
 
-        const name = document.getElementById("tag-name").value;
+        const name = document.getElementById("tag-name").value.trim();
         const mp3 = document.getElementById("mp3-select").value;
 
         if (!name || !mp3) {
           alert("Bitte Name und MP3 auswählen!");
           return;
         }
+
+        // Log the data being sent
+        console.log("Sending data:", {
+          tag_id: currentTagId,
+          name: name,
+          song_filename: mp3,
+        });
 
         fetch("/rfid/register", {
           method: "POST",
@@ -170,19 +177,24 @@
             song_filename: mp3,
           }),
         })
-          .then((response) => response.json())
-          .then((data) => {
-            if (data.error) {
-              alert(`Fehler: ${data.error}`);
-            } else {
-              alert("Tag erfolgreich registriert!");
-              document.getElementById("registration-form").style.display =
-                "none";
-              document.getElementById("tag-name").value = "";
-              document.getElementById("mp3-select").value = "";
+          .then((response) => {
+            if (!response.ok) {
+              return response.json().then((data) => {
+                throw new Error(data.error || "Fehler bei der Registrierung");
+              });
             }
+            return response.json();
           })
-          .catch((error) => alert(`Fehler: ${error}`));
+          .then((data) => {
+            alert("Tag erfolgreich registriert!");
+            document.getElementById("registration-form").style.display = "none";
+            document.getElementById("tag-name").value = "";
+            document.getElementById("mp3-select").value = "";
+          })
+          .catch((error) => {
+            console.error("Error:", error);
+            alert(`Fehler: ${error.message}`);
+          });
       }
 
       // Load MP3s when page loads
