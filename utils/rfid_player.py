@@ -39,6 +39,8 @@ class RFIDPlayer:
         self.client_callback = None
         self.current_process = None
         self.music_dir = os.environ.get("MUSIC_DIR", os.path.join(os.getcwd(), "mp3s"))
+        self.is_playing = False
+        self.callbacks = []
         
         # If app is provided, initialize with it
         if app:
@@ -58,6 +60,13 @@ class RFIDPlayer:
         def cleanup(exception=None):
             self.stop()
     
+    def init_handler(self, handler):
+        """Initialize the RFID handler"""
+        self.rfid_handler = handler
+        if self.rfid_handler:
+            self.rfid_handler.register_callback(self._handle_tag_event)
+            logger.info("RFID handler initialized and callback registered")
+    
     def start(self):
         """Start the RFID player service"""
         if self.running:
@@ -67,7 +76,6 @@ class RFIDPlayer:
         self.running = True
         
         # Initialize and start the RFID handler
-        self.rfid_handler = RFIDHandler(callback=self._handle_tag_event)
         self.rfid_handler.start()
         
         logger.info("RFID player service started")
@@ -96,64 +104,35 @@ class RFIDPlayer:
             tag_id (str): The ID of the detected/removed tag
             status (str): 'present' or 'absent'
         """
-        print(f"[DEBUG] RFID Player: Event empfangen - Tag {tag_id}, Status {status}")
-        
-        # We need to wrap DB operations in application context
-        if self.app:
-            with self.app.app_context():
-                self._process_tag_event(tag_id, status)
-        else:
-            # For development without Flask
-            self._process_tag_event(tag_id, status)
+        try:
+            logger.debug(f"RFID event received - Tag: {tag_id}, Status: {status}")
             
-    def _process_tag_event(self, tag_id, status):
-        print(f"[DEBUG] RFID Player: Verarbeite Event - Tag {tag_id}, Status {status}")
-        
-        if status == 'present':
-            # Tag placed on reader - start playing associated song
-            print(f"[DEBUG] RFID Player: Suche Song für Tag {tag_id}")
-            song = RFIDController.get_song_by_tag(tag_id)
-            
-            if not song:
-                print(f"[DEBUG] RFID Player: Kein Song für Tag {tag_id} gefunden")
-                return
-            
-            # Store current song
-            self.current_song = song
-            
-            # Get tag name if possible
-            tag_name = ''
-            try:
-                tag = RFIDController.get_tag(tag_id)
-                if tag and tag.name:
-                    tag_name = tag.name
-            except Exception as e:
-                print(f"[ERROR] RFID Player: Fehler beim Abrufen des Tag-Namens: {e}")
-            
-            # Start playback
-            self._start_playback(song)
-            
-            # Notify web clients if callback is registered
-            if self.client_callback:
-                print(f"[DEBUG] RFID Player: Benachrichtige Web-Clients zum Abspielen von {song.title}")
-                self.client_callback('play', {
-                    'tag_id': tag_id,
-                    'name': tag_name,
-                    'song_id': song.id,
-                    'filename': song.filename,
-                    'title': song.title
-                })
-            
-        elif status == 'absent':
-            # Tag removed - pause playback
-            print(f"[DEBUG] RFID Player: Tag entfernt, stoppe Wiedergabe")
-            self._stop_playback()
-            
-            # Notify web clients if callback is registered
-            if self.client_callback:
-                self.client_callback('pause', {
-                    'tag_id': tag_id
-                })
+            if status == 'present':
+                # Get song from database
+                from models import RFIDTag
+                from db import db
+                
+                with db.session() as session:
+                    tag = session.query(RFIDTag).filter_by(tag_id=tag_id).first()
+                    if tag and tag.song:
+                        self._start_playback(tag.song)
+                        # Notify clients
+                        for callback in self.callbacks:
+                            callback('play', {
+                                'tag_id': tag_id,
+                                'name': tag.name,
+                                'song_id': tag.song.id,
+                                'filename': tag.song.filename,
+                                'title': tag.song.title
+                            })
+            elif status == 'absent':
+                self._stop_playback()
+                # Notify clients
+                for callback in self.callbacks:
+                    callback('pause', {'tag_id': tag_id})
+                    
+        except Exception as e:
+            logger.error(f"Error handling tag event: {e}")
     
     def _start_playback(self, song):
         """Start playing a song"""
@@ -164,32 +143,36 @@ class RFIDPlayer:
             # Get full path to song
             song_path = os.path.join(self.music_dir, song.filename)
             if not os.path.exists(song_path):
-                print(f"[ERROR] RFID Player: Song nicht gefunden: {song_path}")
+                logger.error(f"Song file not found: {song_path}")
                 return
             
             # Start playback using mpg123
-            print(f"[DEBUG] RFID Player: Starte Wiedergabe von {song.title}")
             self.current_process = subprocess.Popen(
                 ['mpg123', song_path],
                 stdout=subprocess.DEVNULL,
                 stderr=subprocess.DEVNULL
             )
             
+            self.current_song = song
+            self.is_playing = True
+            logger.info(f"Started playing: {song.title}")
+            
         except Exception as e:
-            print(f"[ERROR] RFID Player: Fehler beim Starten der Wiedergabe: {e}")
+            logger.error(f"Error starting playback: {e}")
     
     def _stop_playback(self):
         """Stop the current playback"""
         if self.current_process:
             try:
-                print("[DEBUG] RFID Player: Stoppe Wiedergabe")
+                logger.info("Stopping playback")
                 self.current_process.terminate()
                 self.current_process.wait(timeout=1)
             except Exception as e:
-                print(f"[ERROR] RFID Player: Fehler beim Stoppen der Wiedergabe: {e}")
+                logger.error(f"Error stopping playback: {e}")
             finally:
                 self.current_process = None
                 self.current_song = None
+                self.is_playing = False
     
     def register_client_callback(self, callback):
         """
@@ -198,7 +181,7 @@ class RFIDPlayer:
         Args:
             callback (callable): Function that accepts action and data
         """
-        self.client_callback = callback
+        self.callbacks.append(callback)
 
 # Singleton instance
 rfid_player = RFIDPlayer()
