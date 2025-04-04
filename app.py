@@ -57,12 +57,12 @@ def tag_callback(tag_id, status):
     """Callback function for RFID tag events"""
     if status == 'present':
         # Get song from database
-        from models import RFIDTag
+        from models import db, RFIDTag
         with app.app_context():
             tag = RFIDTag.query.filter_by(tag_id=tag_id).first()
             if tag:
                 # Play the associated song
-                player.play(tag.song_filename)
+                player.play(tag.filename)
                 socketio.emit('song_playing', {'title': tag.name})
     elif status == 'absent':
         # Stop playback when tag is removed

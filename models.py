@@ -36,15 +36,12 @@ class Song(db.Model):
         return f'<Song {self.title}>'
 
 class RFIDTag(db.Model):
-    """
-    Model representing an RFID tag linked to a song
-    """
+    """Model for RFID tags"""
     id = db.Column(db.Integer, primary_key=True)
     tag_id = db.Column(db.String(50), unique=True, nullable=False)
-    name = db.Column(db.String(100), nullable=True)
-    song_id = db.Column(db.Integer, db.ForeignKey('song.id'), nullable=False)
-    last_used = db.Column(db.DateTime, default=datetime.utcnow)
+    name = db.Column(db.String(100), nullable=False)
+    filename = db.Column(db.String(255), nullable=False)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
-    
+
     def __repr__(self):
-        return f'<RFIDTag {self.tag_id}>'
+        return f'<RFIDTag {self.name} ({self.tag_id})>'
