@@ -61,25 +61,24 @@ class RFIDHandler:
         self.tag_removal_thread = None
         self.removal_event = threading.Event()
         
-        # Initialize GPIO
-        GPIO.setmode(GPIO.BCM)
-        GPIO.setwarnings(False)  # Disable GPIO warnings
-        
-        # Initialize RFID reader
-        try:
-            self.reader = SimpleMFRC522()
-            logger.info("RFID reader initialized successfully")
-        except Exception as e:
-            logger.error(f"Failed to initialize RFID reader: {e}")
-            raise
-            
-        # Register signal handlers
+        # Register signal handlers for clean shutdown
         signal.signal(signal.SIGINT, self._signal_handler)
         signal.signal(signal.SIGTERM, self._signal_handler)
         
+        # Initialize the RFID reader if we're on a Raspberry Pi
+        if RASPBERRY_PI:
+            try:
+                self.reader = SimpleMFRC522()
+                print("[INIT] RFID reader initialized successfully")
+                logger.info("RFID reader initialized")
+            except Exception as e:
+                print(f"[ERROR] Failed to initialize RFID reader: {e}")
+                logger.error(f"Failed to initialize RFID reader: {e}")
+                self.reader = None
+            
     def _signal_handler(self, signum, frame):
         """Handle termination signals"""
-        logger.info(f"Received signal {signum}, cleaning up...")
+        print(f"[RFID] Received signal {signum}, cleaning up...")
         self.stop()
         sys.exit(0)
         
