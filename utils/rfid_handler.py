@@ -46,11 +46,29 @@ class RFIDHandler:
     Handler for RFID reader operations
     """
     def __init__(self):
+        """Initialize the RFID handler"""
         self.reader = None
-        self.uid = None
-        self.text = None
-        self.initialized = False
-        self._init_handler()
+        self.current_tag = None
+        self.running = False
+        self.thread = None
+        self.tag_removal_thread = None
+        self.removal_event = threading.Event()
+        self.callback = None
+        
+        # Register signal handlers for clean shutdown
+        signal.signal(signal.SIGINT, self._signal_handler)
+        signal.signal(signal.SIGTERM, self._signal_handler)
+        
+        # Initialize the RFID reader if we're on a Raspberry Pi
+        if RASPBERRY_PI:
+            try:
+                self.reader = SimpleMFRC522()
+                print("[INIT] RFID reader initialized successfully")
+                logger.info("RFID reader initialized")
+            except Exception as e:
+                print(f"[ERROR] Failed to initialize RFID reader: {e}")
+                logger.error(f"Failed to initialize RFID reader: {e}")
+                self.reader = None
 
     def _init_handler(self):
         """Initialize the RFID reader"""
@@ -109,32 +127,30 @@ class RFIDHandler:
         logger.info("Callback registered")
         
     def start(self):
-        """Start the RFID detection thread"""
+        """Start the RFID handler"""
         if self.running:
-            logger.warning("RFID handler already running")
+            logger.warning("RFID handler is already running")
             return
             
-        # Print detailed startup information
-        print("\n[RFID] Starting RFID detection system")
-        if not RASPBERRY_PI:
-            print("[RFID] ⚠️ Not running on Raspberry Pi or missing required libraries")
-            print("[RFID] Using simulation mode instead")
-        else:
-            print(f"[RFID] 🔍 Running on Raspberry Pi with reader: {self.reader}")
-        
-        # Start the main detection loop
         self.running = True
-        self.thread = threading.Thread(target=self._detection_loop, daemon=True)
+        self.thread = threading.Thread(target=self._detection_loop)
+        self.thread.daemon = True
         self.thread.start()
-        
-        # Start a separate thread to detect tag removal
-        if RASPBERRY_PI:
-            self.tag_removal_thread = threading.Thread(target=self._check_tag_removal, daemon=True)
-            self.tag_removal_thread.start()
-            print("[RFID] Started additional tag removal detection thread")
+        logger.info("RFID handler started")
+
+    def stop(self):
+        """Stop the RFID handler"""
+        if not self.running:
+            return
             
-        logger.info("RFID detection started")
-        
+        self.running = False
+        if self.thread:
+            self.thread.join(timeout=1)
+        if self.tag_removal_thread:
+            self.tag_removal_thread.join(timeout=1)
+        self.cleanup()
+        logger.info("RFID handler stopped")
+    
     def _check_tag_removal(self):
         """Separate thread to check for tag removal"""
         print("[RFID] Tag removal detection thread started")
@@ -168,42 +184,6 @@ class RFIDHandler:
             else:
                 # No current tag, just reset
                 consecutive_misses = 0
-    
-    def stop(self):
-        """Stop the RFID detection thread"""
-        if not self.running:
-            return
-        
-        print("[RFID] Stopping RFID detection system...")    
-        self.running = False
-        
-        # Stop main detection thread
-        if self.thread:
-            try:
-                self.thread.join(timeout=2.0)
-                print("[RFID] Main detection thread stopped successfully")
-            except Exception as e:
-                print(f"[RFID] Error stopping main thread: {e}")
-        
-        # Stop tag removal thread if it exists
-        if hasattr(self, 'tag_removal_thread') and self.tag_removal_thread:
-            try:
-                self.tag_removal_thread.join(timeout=2.0)
-                print("[RFID] Tag removal thread stopped successfully")
-            except Exception as e:
-                print(f"[RFID] Error stopping tag removal thread: {e}")
-                
-        # Clean up GPIO on shutdown if we're on a Raspberry Pi
-        if RASPBERRY_PI:
-            try:
-                print("[RFID] Cleaning up GPIO...")
-                GPIO.cleanup()
-                print("[RFID] GPIO cleanup completed")
-            except Exception as e:
-                print(f"[RFID] Error during GPIO cleanup: {e}")
-        
-        print("[RFID] RFID detection system stopped")
-        logger.info("RFID detection stopped")
     
     def _detection_loop(self):
         """Main detection loop, runs in a separate thread"""
@@ -439,3 +419,8 @@ class RFIDHandler:
             except Exception as e:
                 logger.error(f"Error in continuous RFID scan: {e}")
                 time.sleep(1)  # Wait before retrying
+
+    def _signal_handler(self, signum, frame):
+        """Signal handler for clean shutdown"""
+        self.stop()
+        sys.exit(0)
