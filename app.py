@@ -2,7 +2,7 @@
 Main application module
 """
 import os
-from flask import Flask, render_template, jsonify
+from flask import Flask, render_template, jsonify, request
 from flask_sqlalchemy import SQLAlchemy
 from flask_socketio import SocketIO
 from routes.rfid_routes import rfid_bp
@@ -10,6 +10,8 @@ from models import db
 import logging
 import threading
 import time
+from utils.rfid_shared import get_rfid_handler
+from utils.player import MP3Player
 
 # Configure logging
 logging.basicConfig(level=logging.DEBUG)
@@ -43,6 +45,31 @@ with app.app_context():
 # Global variables for RFID scanning
 scanning = False
 current_tag = None
+
+# Initialize MP3 player
+player = MP3Player()
+
+# Initialize RFID handler
+rfid_handler = get_rfid_handler()
+
+def tag_callback(tag_id, status):
+    """Callback function for RFID tag events"""
+    if status == 'present':
+        # Get song from database
+        from models import RFIDTag
+        with app.app_context():
+            tag = RFIDTag.query.filter_by(tag_id=tag_id).first()
+            if tag:
+                # Play the associated song
+                player.play(tag.song_filename)
+                socketio.emit('song_playing', {'title': tag.name})
+    elif status == 'absent':
+        # Stop playback when tag is removed
+        player.stop()
+        socketio.emit('tag_removed')
+
+# Register callback with RFID handler
+rfid_handler.register_callback(tag_callback)
 
 def start_rfid_scan():
     """Start continuous RFID scanning"""
@@ -147,10 +174,8 @@ def handle_disconnect():
     logger.info("Client disconnected")
 
 if __name__ == '__main__':
-    # Start RFID scanning in a separate thread
-    rfid_thread = threading.Thread(target=start_rfid_scan)
-    rfid_thread.daemon = True
-    rfid_thread.start()
+    # Start RFID handler
+    rfid_handler.start()
     
-    # Run the Flask app with SocketIO
+    # Run Flask app with SocketIO
     socketio.run(app, host='0.0.0.0', port=5000, debug=False)

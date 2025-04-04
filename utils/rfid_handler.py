@@ -252,6 +252,9 @@ class RFIDHandler:
                             self.callback(last_tag_id, 'absent')
                         last_tag_id = None
                         self.current_tag = None
+                        # Stop MP3 playback when tag is removed
+                        if hasattr(self, 'player') and self.player:
+                            self.player.stop()
                 
                 time.sleep(check_interval)
                 
