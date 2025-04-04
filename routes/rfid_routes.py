@@ -145,13 +145,32 @@ def scan_rfid():
             existing_tag = RFIDTag.query.filter_by(tag_id=tag_id).first()
             
             if existing_tag:
-                return jsonify({
-                    "tag_id": tag_id,
-                    "text": text,
-                    "registered": True,
-                    "name": existing_tag.name,
-                    "song_id": existing_tag.song_id
-                })
+                # Get the associated song
+                song = Song.query.get(existing_tag.song_id)
+                if song:
+                    # Start playback
+                    from utils.player import start_playback
+                    start_playback(song.filename)
+                    
+                    return jsonify({
+                        "tag_id": tag_id,
+                        "text": text,
+                        "registered": True,
+                        "name": existing_tag.name,
+                        "song": {
+                            "id": song.id,
+                            "title": song.title,
+                            "filename": song.filename
+                        }
+                    })
+                else:
+                    return jsonify({
+                        "tag_id": tag_id,
+                        "text": text,
+                        "registered": True,
+                        "name": existing_tag.name,
+                        "error": "Associated song not found"
+                    })
             else:
                 return jsonify({
                     "tag_id": tag_id,
@@ -159,6 +178,9 @@ def scan_rfid():
                     "registered": False
                 })
         else:
+            # Stop playback if no tag is detected
+            from utils.player import stop_playback
+            stop_playback()
             return jsonify({"error": "No tag detected"}), 404
             
     except Exception as e:
