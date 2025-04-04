@@ -1,5 +1,5 @@
 """
-Main application module
+Main application module for the Kids Audio Player
 """
 import os
 from flask import Flask, render_template, jsonify, request
@@ -12,6 +12,7 @@ import threading
 import time
 from utils.rfid_shared import get_rfid_handler
 from utils.player import MP3Player
+from config import MUSIC_DIR
 
 # Configure logging
 logging.basicConfig(level=logging.DEBUG)

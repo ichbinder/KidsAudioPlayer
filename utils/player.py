@@ -1,55 +1,52 @@
 """
-MP3 Player functionality
+MP3 Player for the Kids Audio Player
 """
 import os
 import subprocess
 import logging
-from app import MUSIC_DIR
+from config import MUSIC_DIR
 
 logger = logging.getLogger(__name__)
 
-# Global variable to store the current playback process
-current_process = None
+class MP3Player:
+    def __init__(self):
+        self.process = None
+        logger.info("MP3 Player initialized")
 
-def start_playback(filename):
-    """Start playing an MP3 file"""
-    global current_process
-    
-    try:
-        # Stop any existing playback
-        stop_playback()
-        
-        # Get the full path to the MP3 file
-        file_path = os.path.join(MUSIC_DIR, filename)
-        
-        if not os.path.exists(file_path):
-            logger.error(f"MP3 file not found: {file_path}")
-            return False
-            
-        # Start playback using mpg123 with audio output to 3.5mm jack
-        current_process = subprocess.Popen(
-            ['mpg123', '-a', 'hw:0,0', file_path],
-            stdout=subprocess.DEVNULL,
-            stderr=subprocess.DEVNULL
-        )
-        
-        logger.info(f"Started playback of {filename}")
-        return True
-        
-    except Exception as e:
-        logger.error(f"Error starting playback: {e}")
-        return False
-
-def stop_playback():
-    """Stop the current playback"""
-    global current_process
-    
-    if current_process:
+    def play(self, filename):
+        """Play an MP3 file"""
         try:
-            current_process.terminate()
-            current_process.wait(timeout=1)
-            logger.info("Playback stopped")
+            # Stop any currently playing song
+            self.stop()
+            
+            # Get the full path to the MP3 file
+            filepath = os.path.join(MUSIC_DIR, filename)
+            
+            if not os.path.exists(filepath):
+                logger.error(f"MP3 file not found: {filepath}")
+                return False
+            
+            # Play the MP3 file using mpg123
+            self.process = subprocess.Popen(
+                ['mpg123', '-q', filepath],
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE
+            )
+            logger.info(f"Playing MP3: {filename}")
+            return True
+            
         except Exception as e:
-            logger.error(f"Error stopping playback: {e}")
-        finally:
-            current_process = None 
+            logger.error(f"Error playing MP3: {e}")
+            return False
+
+    def stop(self):
+        """Stop the currently playing song"""
+        if self.process:
+            try:
+                self.process.terminate()
+                self.process.wait(timeout=1)
+                logger.info("MP3 playback stopped")
+            except Exception as e:
+                logger.error(f"Error stopping MP3 playback: {e}")
+            finally:
+                self.process = None 
