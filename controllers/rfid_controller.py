@@ -6,7 +6,8 @@ This module manages RFID tag registrations and interactions with the database.
 import logging
 from datetime import datetime
 from flask import current_app
-from models import RFIDTag, Song, db
+from models import RFIDTag, db
+from utils.rfid_shared import get_rfid_handler
 
 logger = logging.getLogger(__name__)
 
@@ -15,51 +16,44 @@ class RFIDController:
     Controller for RFID tag operations
     """
     @staticmethod
-    def register_tag(tag_id, song_id, name=None):
+    def register_tag(tag_id, name, mp3_filename):
         """
-        Register a new RFID tag with a song
+        Register a new RFID tag
         
         Args:
             tag_id (str): The ID of the RFID tag
-            song_id (int): The ID of the song to link
-            name (str, optional): A friendly name for the tag
+            name (str): A friendly name for the tag
+            mp3_filename (str): The filename of the associated MP3 file
             
         Returns:
-            RFIDTag: The newly created tag object, or None if failed
+            bool: True if successful, False otherwise
         """
         try:
             # Check if the tag already exists
             existing_tag = RFIDTag.query.filter_by(tag_id=tag_id).first()
             if existing_tag:
                 logger.warning(f"Tag {tag_id} already registered, updating instead")
-                existing_tag.song_id = song_id
-                if name:
-                    existing_tag.name = name
+                existing_tag.name = name
+                existing_tag.mp3_filename = mp3_filename
                 db.session.commit()
-                return existing_tag
-            
-            # Check if the song exists
-            song = Song.query.get(song_id)
-            if not song:
-                logger.error(f"Song with ID {song_id} not found")
-                return None
+                return True
             
             # Create new tag
-            tag = RFIDTag(
+            new_tag = RFIDTag(
                 tag_id=tag_id,
-                song_id=song_id,
-                name=name
+                name=name,
+                mp3_filename=mp3_filename
             )
             
-            db.session.add(tag)
+            db.session.add(new_tag)
             db.session.commit()
-            logger.info(f"Registered RFID tag {tag_id} for song {song.title}")
-            return tag
+            logger.info(f"Registered RFID tag {tag_id}")
+            return True
             
         except Exception as e:
             db.session.rollback()
             logger.error(f"Error registering RFID tag: {e}")
-            return None
+            return False
     
     @staticmethod
     def unregister_tag(tag_id):
@@ -126,7 +120,7 @@ class RFIDController:
         try:
             return RFIDTag.query.all()
         except Exception as e:
-            logger.error(f"Error getting all RFID tags: {e}")
+            logger.error(f"Error getting RFID tags: {e}")
             return []
             
     @staticmethod
@@ -144,4 +138,23 @@ class RFIDController:
             return RFIDTag.query.filter_by(tag_id=tag_id).first()
         except Exception as e:
             logger.error(f"Error getting RFID tag: {e}")
+            return None
+
+    @staticmethod
+    def get_tag_info(tag_id):
+        """Get information about a specific tag"""
+        try:
+            tag = RFIDTag.query.filter_by(tag_id=tag_id).first()
+            if not tag:
+                return None
+
+            return {
+                'id': tag.id,
+                'tag_id': tag.tag_id,
+                'name': tag.name,
+                'mp3_filename': tag.mp3_filename
+            }
+
+        except Exception as e:
+            logger.error(f"Error getting tag info: {e}")
             return None

@@ -4,7 +4,7 @@ Routes for RFID tag management
 import logging
 from flask import Blueprint, request, jsonify, render_template, redirect, url_for, flash
 from controllers.rfid_controller import RFIDController
-from models import Song, db, RFIDTag
+from models import RFIDTag, db
 from utils.rfid_shared import get_rfid_handler
 import os
 
@@ -16,53 +16,15 @@ rfid_bp = Blueprint('rfid', __name__, url_prefix='/rfid')
 @rfid_bp.route('/')
 def rfid_management():
     """RFID tag management page"""
-    # Get all available songs from mp3 directory
+    # Get all available MP3 files from the music directory
     from utils.file_handler import get_mp3_files
-    from app import MUSIC_DIR
+    from config import MUSIC_DIR
     
-    # Ensure all MP3 files are in the database
-    mp3_files = get_mp3_files(MUSIC_DIR)
-    default_playlist_id = 1
-    
-    # Check if we have a default playlist
-    from models import Playlist
-    default_playlist = Playlist.query.filter_by(id=default_playlist_id).first()
-    if not default_playlist:
-        # Create a default playlist
-        default_playlist = Playlist(name="Default")
-        db.session.add(default_playlist)
-        try:
-            db.session.commit()
-            default_playlist_id = default_playlist.id
-            logger.info(f"Created default playlist with ID {default_playlist_id}")
-        except Exception as e:
-            logger.error(f"Error creating default playlist: {e}")
-            db.session.rollback()
-            
-    # Add any missing songs to the database
-    for mp3 in mp3_files:
-        # Check if the song already exists in the database
-        existing_song = Song.query.filter_by(filename=mp3['filename']).first()
-        if not existing_song:
-            # Create new song entry
-            new_song = Song(
-                title=mp3['title'],
-                filename=mp3['filename'],
-                playlist_id=default_playlist_id
-            )
-            db.session.add(new_song)
-            try:
-                db.session.commit()
-                logger.info(f"Added song {mp3['title']} to database")
-            except Exception as e:
-                logger.error(f"Error adding song {mp3['title']} to database: {e}")
-                db.session.rollback()
-    
-    # Get all tags and songs for the template
+    # Get all tags and MP3 files for the template
     tags = RFIDController.get_all_tags()
-    songs = Song.query.all()
+    mp3_files = get_mp3_files(MUSIC_DIR)
     
-    return render_template('rfid_management.html', tags=tags, songs=songs)
+    return render_template('rfid_management.html', tags=tags, mp3_files=mp3_files)
 
 @rfid_bp.route('/rfid/register', methods=['POST'])
 def register_rfid():
@@ -146,32 +108,13 @@ def scan_rfid():
             existing_tag = RFIDTag.query.filter_by(tag_id=tag_id).first()
             
             if existing_tag:
-                # Get the associated song
-                song = Song.query.get(existing_tag.song_id)
-                if song:
-                    # Start playback
-                    from utils.player import start_playback
-                    start_playback(song.filename)
-                    
-                    return jsonify({
-                        "tag_id": tag_id,
-                        "text": text,
-                        "registered": True,
-                        "name": existing_tag.name,
-                        "song": {
-                            "id": song.id,
-                            "title": song.title,
-                            "filename": song.filename
-                        }
-                    })
-                else:
-                    return jsonify({
-                        "tag_id": tag_id,
-                        "text": text,
-                        "registered": True,
-                        "name": existing_tag.name,
-                        "error": "Associated song not found"
-                    })
+                return jsonify({
+                    "tag_id": tag_id,
+                    "text": text,
+                    "registered": True,
+                    "name": existing_tag.name,
+                    "mp3_filename": existing_tag.mp3_filename
+                })
             else:
                 return jsonify({
                     "tag_id": tag_id,
@@ -179,9 +122,6 @@ def scan_rfid():
                     "registered": False
                 })
         else:
-            # Stop playback if no tag is detected
-            from utils.player import stop_playback
-            stop_playback()
             return jsonify({"error": "No tag detected"}), 404
             
     except Exception as e:
@@ -337,12 +277,7 @@ def get_tags():
             "id": tag.id,
             "tag_id": tag.tag_id,
             "name": tag.name,
-            "song_id": tag.song_id,
-            "song": {
-                "id": tag.song.id,
-                "title": tag.song.title,
-                "filename": tag.song.filename
-            } if tag.song else None
+            "mp3_filename": tag.mp3_filename
         } for tag in tags])
         
     except Exception as e:
