@@ -24,17 +24,97 @@
         padding: 10px 20px;
         font-size: 16px;
         cursor: pointer;
+        margin: 5px;
+      }
+      .form-group {
+        margin: 10px 0;
+      }
+      input[type="text"],
+      select {
+        padding: 8px;
+        margin: 5px;
+        width: 200px;
+      }
+      .mp3-list {
+        margin: 20px 0;
+        padding: 10px;
+        border: 1px solid #ccc;
+        border-radius: 5px;
+        max-height: 200px;
+        overflow-y: auto;
+      }
+      .mp3-item {
+        padding: 5px;
+        cursor: pointer;
+      }
+      .mp3-item:hover {
+        background-color: #f0f0f0;
       }
     </style>
   </head>
   <body>
     <div class="container">
       <h1>Kids Audio Player</h1>
+
+      <!-- Tag Scan Section -->
       <div class="status" id="status">Kein Tag erkannt</div>
       <button onclick="scanTag()">Tag scannen</button>
+
+      <!-- Tag Registration Form -->
+      <div id="registration-form" style="display: none">
+        <h2>Tag registrieren</h2>
+        <div class="form-group">
+          <input type="text" id="tag-name" placeholder="Tag Name" />
+        </div>
+        <div class="form-group">
+          <select id="mp3-select">
+            <option value="">MP3 auswählen</option>
+          </select>
+        </div>
+        <button onclick="registerTag()">Tag registrieren</button>
+      </div>
+
+      <!-- MP3 List -->
+      <div class="mp3-list" id="mp3-list">
+        <h3>Verfügbare MP3s</h3>
+        <div id="mp3-items"></div>
+      </div>
     </div>
 
     <script>
+      let currentTagId = null;
+
+      // Load available MP3s
+      function loadMP3s() {
+        fetch("/api/songs")
+          .then((response) => response.json())
+          .then((songs) => {
+            const select = document.getElementById("mp3-select");
+            const mp3List = document.getElementById("mp3-items");
+
+            // Clear existing options
+            select.innerHTML = '<option value="">MP3 auswählen</option>';
+            mp3List.innerHTML = "";
+
+            // Add songs to select and list
+            songs.forEach((song) => {
+              // Add to select
+              const option = document.createElement("option");
+              option.value = song.filename;
+              option.textContent = song.title;
+              select.appendChild(option);
+
+              // Add to list
+              const item = document.createElement("div");
+              item.className = "mp3-item";
+              item.textContent = song.title;
+              item.onclick = () => (select.value = song.filename);
+              mp3List.appendChild(item);
+            });
+          })
+          .catch((error) => console.error("Error loading MP3s:", error));
+      }
+
       function scanTag() {
         const statusDiv = document.getElementById("status");
         statusDiv.textContent = "Scanne...";
@@ -44,16 +124,69 @@
           .then((data) => {
             if (data.error) {
               statusDiv.textContent = `Fehler: ${data.error}`;
-            } else if (data.registered) {
-              statusDiv.textContent = `Tag erkannt: ${data.name} (${data.tag_id})`;
+              document.getElementById("registration-form").style.display =
+                "none";
             } else {
-              statusDiv.textContent = `Neuer Tag erkannt: ${data.tag_id}`;
+              currentTagId = data.tag_id;
+              if (data.registered) {
+                statusDiv.textContent = `Tag erkannt: ${data.name} (${data.tag_id})`;
+                document.getElementById("registration-form").style.display =
+                  "none";
+              } else {
+                statusDiv.textContent = `Neuer Tag erkannt: ${data.tag_id}`;
+                document.getElementById("registration-form").style.display =
+                  "block";
+              }
             }
           })
           .catch((error) => {
             statusDiv.textContent = `Fehler beim Scannen: ${error}`;
+            document.getElementById("registration-form").style.display = "none";
           });
       }
+
+      function registerTag() {
+        if (!currentTagId) {
+          alert("Bitte zuerst einen Tag scannen!");
+          return;
+        }
+
+        const name = document.getElementById("tag-name").value;
+        const mp3 = document.getElementById("mp3-select").value;
+
+        if (!name || !mp3) {
+          alert("Bitte Name und MP3 auswählen!");
+          return;
+        }
+
+        fetch("/rfid/register", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            tag_id: currentTagId,
+            name: name,
+            song_filename: mp3,
+          }),
+        })
+          .then((response) => response.json())
+          .then((data) => {
+            if (data.error) {
+              alert(`Fehler: ${data.error}`);
+            } else {
+              alert("Tag erfolgreich registriert!");
+              document.getElementById("registration-form").style.display =
+                "none";
+              document.getElementById("tag-name").value = "";
+              document.getElementById("mp3-select").value = "";
+            }
+          })
+          .catch((error) => alert(`Fehler: ${error}`));
+      }
+
+      // Load MP3s when page loads
+      loadMP3s();
     </script>
   </body>
 </html>
