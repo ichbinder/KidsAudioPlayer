@@ -3,6 +3,7 @@ import logging
 from datetime import datetime
 from flask import Flask, render_template, jsonify, send_file, request
 from utils.file_handler import get_mp3_files, get_file_path
+from utils.rfid_shared import get_rfid_handler
 from db import db
 
 # Configure logging
@@ -46,10 +47,15 @@ if not os.path.exists(MUSIC_DIR):
     except Exception as e:
         logger.error(f"Failed to create MP3s directory: {e}")
 
+# Get the shared RFID handler
+rfid_handler = get_rfid_handler()
+
 # Register blueprints
 from routes.rfid_routes import rfid_bp
 from routes.api_routes import api_bp, emit_event
 
+# Initialize RFID routes with the shared handler
+rfid_bp.rfid_handler = rfid_handler
 app.register_blueprint(rfid_bp)
 app.register_blueprint(api_bp)
 

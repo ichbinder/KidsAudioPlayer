@@ -4,7 +4,8 @@ Routes for RFID tag management
 import logging
 from flask import Blueprint, request, jsonify, render_template, redirect, url_for, flash
 from controllers.rfid_controller import RFIDController
-from models import Song, db
+from models import Song, db, RFIDTag
+from utils.rfid_shared import get_rfid_handler
 
 logger = logging.getLogger(__name__)
 
@@ -296,3 +297,124 @@ def test_rfid_read():
             "success": False,
             "error": f"Fehler beim Lesen des RFID-Tags: {e}"
         }), 500
+
+@rfid_bp.route('/rfid/scan', methods=['GET'])
+def scan_rfid():
+    """Scan for an RFID tag"""
+    try:
+        # Get the shared RFID handler
+        rfid_handler = get_rfid_handler()
+        
+        if not rfid_handler:
+            logger.error("RFID handler not initialized")
+            return jsonify({"error": "RFID handler not initialized"}), 500
+            
+        # Try to read a tag
+        tag_id, text = rfid_handler.read()
+        
+        if tag_id:
+            # Convert tag_id to string for consistency
+            tag_id = str(tag_id)
+            
+            # Check if tag is already registered
+            existing_tag = RFIDTag.query.filter_by(tag_id=tag_id).first()
+            
+            if existing_tag:
+                return jsonify({
+                    "tag_id": tag_id,
+                    "text": text,
+                    "registered": True,
+                    "name": existing_tag.name,
+                    "song_id": existing_tag.song_id
+                })
+            else:
+                return jsonify({
+                    "tag_id": tag_id,
+                    "text": text,
+                    "registered": False
+                })
+        else:
+            return jsonify({"error": "No tag detected"}), 404
+            
+    except Exception as e:
+        logger.error(f"Error scanning RFID tag: {e}")
+        return jsonify({"error": str(e)}), 500
+
+@rfid_bp.route('/rfid/register', methods=['POST'])
+def register_rfid():
+    """Register a new RFID tag"""
+    try:
+        data = request.get_json()
+        tag_id = data.get('tag_id')
+        name = data.get('name')
+        song_id = data.get('song_id')
+        
+        if not all([tag_id, name, song_id]):
+            return jsonify({"error": "Missing required fields"}), 400
+            
+        # Check if tag is already registered
+        existing_tag = RFIDTag.query.filter_by(tag_id=tag_id).first()
+        if existing_tag:
+            return jsonify({"error": "Tag already registered"}), 400
+            
+        # Check if song exists
+        song = Song.query.get(song_id)
+        if not song:
+            return jsonify({"error": "Song not found"}), 404
+            
+        # Create new tag
+        new_tag = RFIDTag(tag_id=tag_id, name=name, song_id=song_id)
+        db.session.add(new_tag)
+        db.session.commit()
+        
+        return jsonify({
+            "message": "Tag registered successfully",
+            "tag": {
+                "id": new_tag.id,
+                "tag_id": new_tag.tag_id,
+                "name": new_tag.name,
+                "song_id": new_tag.song_id
+            }
+        })
+        
+    except Exception as e:
+        logger.error(f"Error registering RFID tag: {e}")
+        return jsonify({"error": str(e)}), 500
+
+@rfid_bp.route('/rfid/tags', methods=['GET'])
+def get_tags():
+    """Get all registered RFID tags"""
+    try:
+        tags = RFIDTag.query.all()
+        return jsonify([{
+            "id": tag.id,
+            "tag_id": tag.tag_id,
+            "name": tag.name,
+            "song_id": tag.song_id,
+            "song": {
+                "id": tag.song.id,
+                "title": tag.song.title,
+                "filename": tag.song.filename
+            } if tag.song else None
+        } for tag in tags])
+        
+    except Exception as e:
+        logger.error(f"Error getting RFID tags: {e}")
+        return jsonify({"error": str(e)}), 500
+
+@rfid_bp.route('/rfid/tags/<int:tag_id>', methods=['DELETE'])
+def delete_tag(tag_id):
+    """Delete a registered RFID tag"""
+    try:
+        tag = RFIDTag.query.get(tag_id)
+        if not tag:
+            return jsonify({"error": "Tag not found"}), 404
+            
+        db.session.delete(tag)
+        db.session.commit()
+        
+        return jsonify({"message": "Tag deleted successfully"})
+        
+    except Exception as e:
+        logger.error(f"Error deleting RFID tag: {e}")
+        return jsonify({"error": str(e)}), 500

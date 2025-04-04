@@ -6,6 +6,7 @@ This module runs the RFID reader and player service independently from the web s
 import os
 import logging
 import time
+from utils.rfid_shared import get_rfid_handler
 from utils.rfid_player import rfid_player
 
 # Configure logging
@@ -16,6 +17,12 @@ def main():
     """Main function to run the RFID service"""
     try:
         logger.info("Starting RFID service...")
+        
+        # Get the shared RFID handler
+        rfid_handler = get_rfid_handler()
+        
+        # Initialize the RFID player with the shared handler
+        rfid_player.init_handler(rfid_handler)
         
         # Start the RFID player
         rfid_player.start()
