@@ -309,13 +309,10 @@ def scan_rfid():
             logger.error("RFID handler not initialized")
             return jsonify({"error": "RFID handler not initialized"}), 500
             
-        # Try to read a tag
-        tag_id, text = rfid_handler.read()
+        # Try to read a tag once
+        tag_id, text = rfid_handler.read_once()
         
         if tag_id:
-            # Convert tag_id to string for consistency
-            tag_id = str(tag_id)
-            
             # Check if tag is already registered
             existing_tag = RFIDTag.query.filter_by(tag_id=tag_id).first()
             
