@@ -1,19 +1,14 @@
 """
-Shared RFID Handler
-
-This module provides a shared RFID handler instance that can be used by both
-the web application and the RFID service.
+Shared RFID handler instance for the application
 """
-import logging
 from utils.rfid_handler import RFIDHandler
 
-# Configure logging
-logging.basicConfig(level=logging.DEBUG)
-logger = logging.getLogger(__name__)
-
-# Create a shared RFID handler instance
-shared_rfid_handler = RFIDHandler()
+# Create a single instance of the RFID handler
+_rfid_handler = None
 
 def get_rfid_handler():
     """Get the shared RFID handler instance"""
-    return shared_rfid_handler 
+    global _rfid_handler
+    if _rfid_handler is None:
+        _rfid_handler = RFIDHandler()
+    return _rfid_handler 

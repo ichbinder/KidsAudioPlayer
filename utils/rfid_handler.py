@@ -439,19 +439,3 @@ class RFIDHandler:
             except Exception as e:
                 logger.error(f"Error in continuous RFID scan: {e}")
                 time.sleep(1)  # Wait before retrying
-
-@contextmanager
-def rfid_manager(callback=None):
-    """
-    Context manager for RFID handler to ensure proper cleanup
-    
-    Usage:
-        with rfid_manager(callback_function) as handler:
-            # Do something with handler
-    """
-    handler = RFIDHandler()
-    handler.start()
-    try:
-        yield handler
-    finally:
-        handler.stop()
