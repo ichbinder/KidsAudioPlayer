@@ -4,6 +4,7 @@ from datetime import datetime
 from flask import Flask, render_template, jsonify, send_file, request
 from utils.file_handler import get_mp3_files, get_file_path
 from db import db
+import threading
 
 # Configure logging
 logging.basicConfig(level=logging.DEBUG)
@@ -78,11 +79,23 @@ def rfid_callback(action, data):
 
 rfid_player.register_client_callback(rfid_callback)
 
-# We'll start the RFID player in the route handler instead of at app startup
-# to avoid issues with multiple workers in Gunicorn
-
 # Global flag to track if RFID player is started
 RFID_PLAYER_STARTED = False
+
+def start_rfid_player():
+    """Start the RFID player in a separate thread"""
+    global RFID_PLAYER_STARTED
+    if not RFID_PLAYER_STARTED:
+        try:
+            rfid_player.start()
+            RFID_PLAYER_STARTED = True
+            logger.info("RFID player started in separate thread")
+        except Exception as e:
+            logger.error(f"Error starting RFID player: {e}")
+
+# Start RFID player in a separate thread
+rfid_thread = threading.Thread(target=start_rfid_player, daemon=True)
+rfid_thread.start()
 
 # Cleanup RFID player when app shuts down
 @app.teardown_appcontext
@@ -93,17 +106,6 @@ def cleanup_rfid_player(exception=None):
 @app.route('/')
 def index():
     """Render the main page of the MP3 player."""
-    global RFID_PLAYER_STARTED
-    
-    # Start RFID player if not already started
-    if not RFID_PLAYER_STARTED:
-        try:
-            rfid_player.start()
-            RFID_PLAYER_STARTED = True
-            logger.info("RFID player started")
-        except Exception as e:
-            logger.error(f"Error starting RFID player: {e}")
-    
     return render_template('index.html')
 
 @app.route('/api/songs')
@@ -169,4 +171,5 @@ def server_error(e):
     return jsonify({"error": "Server error"}), 500
 
 if __name__ == '__main__':
-    app.run(host="0.0.0.0", port=5000, debug=True)
+    # Disable debug mode to prevent reloading
+    app.run(host="0.0.0.0", port=5000, debug=False)
