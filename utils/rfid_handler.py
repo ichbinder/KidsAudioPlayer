@@ -423,6 +423,21 @@ class RFIDHandler:
             logger.error(f"Error reading RFID tag: {e}")
             return None, None
 
+    def start_continuous_scan(self):
+        """Start continuous scanning for RFID tags"""
+        if not self.reader:
+            logger.error("RFID reader not initialized")
+            return
+        
+        logger.info("Starting continuous RFID scan")
+        self.scanning = True
+        
+        while self.scanning:
+            try:
+                # Try to read a tag
+                tag_id, text = self.read_once()
+                
+                if tag_id:
 @contextmanager
 def rfid_manager(callback=None):
     """

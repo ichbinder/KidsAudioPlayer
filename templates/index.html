@@ -4,6 +4,7 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Kids Audio Player</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.0.1/socket.io.js"></script>
     <style>
       body {
         font-family: Arial, sans-serif;
@@ -50,15 +51,26 @@
       .mp3-item:hover {
         background-color: #f0f0f0;
       }
+      .now-playing {
+        margin: 20px 0;
+        padding: 10px;
+        background-color: #e6f7ff;
+        border-radius: 5px;
+      }
     </style>
   </head>
   <body>
     <div class="container">
       <h1>Kids Audio Player</h1>
 
-      <!-- Tag Scan Section -->
+      <!-- Current Status -->
       <div class="status" id="status">Kein Tag erkannt</div>
-      <button onclick="scanTag()">Tag scannen</button>
+
+      <!-- Now Playing -->
+      <div class="now-playing" id="now-playing" style="display: none">
+        <h3>Aktuell läuft:</h3>
+        <div id="current-song"></div>
+      </div>
 
       <!-- Tag Registration Form -->
       <div id="registration-form" style="display: none">
@@ -83,6 +95,34 @@
 
     <script>
       let currentTagId = null;
+      const socket = io();
+
+      // Handle WebSocket events
+      socket.on("connect", () => {
+        console.log("Connected to server");
+      });
+
+      socket.on("tag_detected", (data) => {
+        currentTagId = data.tag_id;
+        updateStatus(`Tag erkannt: ${data.tag_id}`);
+        document.getElementById("registration-form").style.display = "block";
+      });
+
+      socket.on("tag_removed", () => {
+        currentTagId = null;
+        updateStatus("Kein Tag erkannt");
+        document.getElementById("registration-form").style.display = "none";
+        document.getElementById("now-playing").style.display = "none";
+      });
+
+      socket.on("song_playing", (data) => {
+        document.getElementById("now-playing").style.display = "block";
+        document.getElementById("current-song").textContent = data.title;
+      });
+
+      function updateStatus(message) {
+        document.getElementById("status").textContent = message;
+      }
 
       // Load available MP3s
       function loadMP3s() {
@@ -115,39 +155,9 @@
           .catch((error) => console.error("Error loading MP3s:", error));
       }
 
-      function scanTag() {
-        const statusDiv = document.getElementById("status");
-        statusDiv.textContent = "Scanne...";
-
-        fetch("/rfid/scan")
-          .then((response) => response.json())
-          .then((data) => {
-            if (data.error) {
-              statusDiv.textContent = `Fehler: ${data.error}`;
-              document.getElementById("registration-form").style.display =
-                "none";
-            } else {
-              currentTagId = data.tag_id;
-              if (data.registered) {
-                statusDiv.textContent = `Tag erkannt: ${data.name} (${data.tag_id})`;
-                document.getElementById("registration-form").style.display =
-                  "none";
-              } else {
-                statusDiv.textContent = `Neuer Tag erkannt: ${data.tag_id}`;
-                document.getElementById("registration-form").style.display =
-                  "block";
-              }
-            }
-          })
-          .catch((error) => {
-            statusDiv.textContent = `Fehler beim Scannen: ${error}`;
-            document.getElementById("registration-form").style.display = "none";
-          });
-      }
-
       function registerTag() {
         if (!currentTagId) {
-          alert("Bitte zuerst einen Tag scannen!");
+          alert("Bitte warten Sie, bis ein Tag erkannt wird!");
           return;
         }
 
@@ -158,13 +168,6 @@
           alert("Bitte Name und MP3 auswählen!");
           return;
         }
-
-        // Log the data being sent
-        console.log("Sending data:", {
-          tag_id: currentTagId,
-          name: name,
-          song_filename: mp3,
-        });
 
         fetch("/rfid/register", {
           method: "POST",
