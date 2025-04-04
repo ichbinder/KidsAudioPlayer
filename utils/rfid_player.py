@@ -12,6 +12,7 @@ import subprocess
 from datetime import datetime
 from models import RFIDTag, Song
 from db import db
+from app import app
 
 # Configure logging
 logging.basicConfig(level=logging.DEBUG)
@@ -60,25 +61,27 @@ class RFIDPlayer:
         try:
             logger.debug(f"RFID event received - Tag: {tag_id}, Status: {status}")
             
-            if status == 'present':
-                # Get song from database
-                tag = RFIDTag.query.filter_by(tag_id=tag_id).first()
-                if tag and tag.song:
-                    self._start_playback(tag.song)
+            # Use application context for database operations
+            with app.app_context():
+                if status == 'present':
+                    # Get song from database
+                    tag = RFIDTag.query.filter_by(tag_id=tag_id).first()
+                    if tag and tag.song:
+                        self._start_playback(tag.song)
+                        # Notify clients
+                        for callback in self.callbacks:
+                            callback('play', {
+                                'tag_id': tag_id,
+                                'name': tag.name,
+                                'song_id': tag.song.id,
+                                'filename': tag.song.filename,
+                                'title': tag.song.title
+                            })
+                elif status == 'absent':
+                    self._stop_playback()
                     # Notify clients
                     for callback in self.callbacks:
-                        callback('play', {
-                            'tag_id': tag_id,
-                            'name': tag.name,
-                            'song_id': tag.song.id,
-                            'filename': tag.song.filename,
-                            'title': tag.song.title
-                        })
-            elif status == 'absent':
-                self._stop_playback()
-                # Notify clients
-                for callback in self.callbacks:
-                    callback('pause', {'tag_id': tag_id})
+                        callback('pause', {'tag_id': tag_id})
                     
         except Exception as e:
             logger.error(f"Error handling tag event: {e}")
