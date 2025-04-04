@@ -82,6 +82,11 @@ class RFIDHandler:
         self.stop()
         sys.exit(0)
         
+    def register_callback(self, callback):
+        """Register a callback function for tag events"""
+        self.callback = callback
+        logger.info("Callback registered")
+        
     def start(self):
         """Start the RFID detection thread"""
         if self.running:
