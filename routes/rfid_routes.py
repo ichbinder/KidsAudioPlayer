@@ -69,12 +69,12 @@ def register_rfid():
     """Register a new RFID tag"""
     try:
         data = request.get_json()
-        if not data or not all(k in data for k in ['tag_id', 'name', 'song_filename']):
+        if not data or not all(k in data for k in ['tag_id', 'name', 'mp3_filename']):
             return jsonify({'error': 'Missing required fields'}), 400
             
         tag_id = data['tag_id']
         name = data['name']
-        filename = data['song_filename']  # Changed from song_filename to filename
+        mp3_filename = data['mp3_filename']
         
         # Check if tag already exists
         existing_tag = RFIDTag.query.filter_by(tag_id=tag_id).first()
@@ -85,7 +85,7 @@ def register_rfid():
         new_tag = RFIDTag(
             tag_id=tag_id,
             name=name,
-            filename=filename  # Changed from song_filename to filename
+            mp3_filename=mp3_filename
         )
         
         db.session.add(new_tag)
@@ -97,7 +97,7 @@ def register_rfid():
                 'id': new_tag.id,
                 'tag_id': new_tag.tag_id,
                 'name': new_tag.name,
-                'filename': new_tag.filename  # Changed from song_filename to filename
+                'mp3_filename': new_tag.mp3_filename
             }
         })
         
