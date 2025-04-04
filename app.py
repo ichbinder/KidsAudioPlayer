@@ -11,7 +11,7 @@ import logging
 import threading
 import time
 from utils.rfid_shared import get_rfid_handler
-from utils.player import MP3Player
+from utils.player import MP3Player, start_playback, stop_playback
 from config import MUSIC_DIR
 
 # Configure logging
@@ -107,23 +107,28 @@ def start_rfid_scan():
                         'text': text
                     })
                     
-                    # Check if tag is registered
-                    from models import RFIDTag
-                    tag = RFIDTag.query.filter_by(tag_id=tag_id).first()
-                    if tag and tag.mp3_filename:
-                        # Emit song event
-                        socketio.emit('song', {
-                            'tag_id': tag_id,
-                            'mp3_filename': tag.mp3_filename
-                        })
-                    else:
-                        logger.info(f"Tag {tag_id} nicht registriert oder keine MP3-Datei verknüpft")
+                    # Check if tag is registered and play song
+                    with app.app_context():
+                        from models import RFIDTag
+                        tag = RFIDTag.query.filter_by(tag_id=tag_id).first()
+                        if tag and tag.mp3_filename:
+                            # Start playback
+                            if start_playback(tag.mp3_filename):
+                                socketio.emit('song_playing', {
+                                    'title': tag.name,
+                                    'filename': tag.mp3_filename
+                                })
+                            else:
+                                logger.error(f"Konnte MP3 nicht abspielen: {tag.mp3_filename}")
+                        else:
+                            logger.info(f"Tag {tag_id} nicht registriert oder keine MP3-Datei verknüpft")
             else:
                 if current_tag:
                     # Tag removed
                     logger.debug(f"Tag entfernt: {current_tag}")
                     socketio.emit('tag_removed', {'tag_id': current_tag})
                     current_tag = None
+                    stop_playback()
                     
             # Small delay to prevent CPU overload
             time.sleep(0.1)

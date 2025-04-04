@@ -109,7 +109,7 @@
         document.getElementById("registration-form").style.display = "block";
       });
 
-      socket.on("tag_removed", () => {
+      socket.on("tag_removed", (data) => {
         console.log("Tag removed:", data);
         currentTagId = null;
         updateStatus("Kein Tag erkannt");
